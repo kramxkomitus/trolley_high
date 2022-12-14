@@ -67,10 +67,6 @@ while True:
     left_inv, right_inv = joystick.get_button(4), joystick.get_button(5)
     left, right = joystick.get_axis(5), joystick.get_axis(2)
 
-    if left_inv:
-        left = -left
-    if right_inv:
-        right = -right
 
     if A:
         HW.write(f"start\n".encode())
@@ -86,12 +82,14 @@ while True:
 
     set_vel(left, right)
 
-    R_str = "R " + str(R_vel)
-    L_str = "L " + str(L_vel)
+
+
+    R_str = "R " + str(R_vel * (1 - 2 * right_inv))
+    L_str = "L " + str(L_vel * (1 - 2 * left_inv))
     print(R_str + "       " + L_str + '\r')
     HW.write((R_str + '\n').encode())
     HW.write((L_str + '\n').encode())
-    time.sleep(0.1)
+    time.sleep(0.01)
     
     
 
