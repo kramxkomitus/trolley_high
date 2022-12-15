@@ -20,14 +20,14 @@ def set_vel(R, L):
         R_vel = 0
     elif R > R_vel >= 0 :
         R_vel += 1
-    elif R_vel < R:
+    elif R_vel > R:
         R_vel -= 1
 
     if L == 0:
         L_vel = 0
     elif L > L_vel >= 0 :
         L_vel += 1
-    elif L_vel < L:
+    elif L_vel > L:
         L_vel -= 1
     return
 
