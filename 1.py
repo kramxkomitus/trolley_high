@@ -97,6 +97,7 @@ def set_camera(cam_No=0):
 			
 			frame = show_screen_data(frame, scrn_data)
 			frame_CNY = show_screen_data(frame_CNY, scrn_data_CNY)
+			cv.imshow('camera', raw)
 			cv.imshow('original', frame)
 			cv.imshow('output', frame_CNY)
 
@@ -157,13 +158,6 @@ def save_frame(frame, i):
 	filename = '9.12.22' + str(i) + '.jpg'
 	cv.imwrite(filename, frame)
   
-  
-  
-
-
-
-
-
 
 
 d = load_settings(0)
