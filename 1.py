@@ -74,7 +74,7 @@ def save_settings(cam_No, cam_settings):
 def set_light(val):
 	import serial
 	import time
-	serial_path = "/dev/ttyUSB0"
+	serial_path = "/dev/ttyUSB1"
 	HW = serial.Serial(serial_path, baudrate=115200)
 	if HW.isOpen() == True:
 		print("found" + serial_path)
@@ -144,21 +144,31 @@ def set_camera(cam_No):
 
 			lines = cv.HoughLinesP(frame_cny, 1, np.pi / 180, threshold=threshold, minLineLength=minLineLength, maxLineGap=maxLineGap)
 
+# 			добавим список линий
+			vek = []
+
 			if lines is not None:
 				for i in range(0, len(lines)):
-					l = lines[i][0]
-					cv.line(raw, 
-					(
-						l[0] + cropp_f[1][0], 
-						l[1] + cropp_f[0][0]
-						), 
-						(
-						l[2] + cropp_f[1][0], 
-						l[3] + cropp_f[0][0]
-						),
-						(0,100,255), 3, cv.LINE_AA)
 
+					line = lines[i][0]
 
+					point_1 = (line[0] + cropp_f[1][0], line[1] + cropp_f[0][0])
+
+					point_2 = (line[2] + cropp_f[1][0], line[3] + cropp_f[0][0])
+
+					vek.append((point_1, point_2))
+
+					# cv.line(raw, (0, point_1[1]), (600, point_1[1]), (0,100,0), 3, cv.LINE_AA)
+
+					cv.line(raw, point_1, point_2, (0,100,255), 3, cv.LINE_AA)
+					raw = cv.circle(raw, point_1, 4, (255, 0, 0), 2)
+					raw = cv.circle(raw, point_2, 4, (0, 0, 255), 2)
+			# сортировка линий по самым близким
+
+			vek_sort = sorted(vek, key= lambda x: -x[0][1])
+
+			raw = cv.circle(raw, vek_sort[0][0], 10, (0, 255, 0), 2)
+			raw = cv.circle(raw, vek_sort[1][0], 10, (0, 255, 0), 2)
 
 			# frame_devided = cv.adaptiveThreshold(frame_blured, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2)
 			# frame_devided = cv.adaptiveThreshold(frame_blured, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 11, 2)
@@ -229,12 +239,88 @@ def set_camera(cam_No):
 	cv.destroyAllWindows()
 
 
+
+
+
+ 
+def find_lines(cam_No):
+	cropp_f = (
+		(65, 380), 	#heigh
+		(170, 415)	#width
+		)
+	cam = cv.VideoCapture(cam_No)
+	
+	if (cam.isOpened()== False):
+		print("Error opening video file")
+		return False
+	
+	cam_set = load_settings(cam_No)
+
+	blur_kf = cam_set['blur_kf']
+	CNY_kf_up = cam_set['CNY_kf_up']
+	CNY_kf_bottom = cam_set['CNY_kf_bottom']
+	threshold = cam_set['threshold']
+	minLineLength = cam_set['minLineLength']
+	maxLineGap = cam_set['maxLineGap']
+	light = cam_set['light']
+
+	set_light(light)
+
+	while(cam.isOpened()):
+	
+		ret, raw = cam.read()
+		if ret == True:
+
+			scrn_data = ('koeffs: \n' +
+	
+							'blur_kf = ' + str(blur_kf) + ' | W/w\n' +
+							'CNY_kf_up =' + str(CNY_kf_up) + ' | R/r\n' +
+							'CNY_kf_bottom =' + str(CNY_kf_bottom) + ' | E/e\n' + 
+							'\n' + 	
+							'Line detection settings: \n' +
+							'\n' +
+							'threshold = ' + str(threshold) + ' | T/t\n' +
+							'minLineLength =' + str(minLineLength) + ' | F/f\n' +
+							'maxLineGap =' + str(maxLineGap) + ' | G/g\n' +
+							'\n'+
+							'light = ' + str(light) + ' | L/l\n' + 
+							'save settings: \'s\'' + 
+							'exit: \'q\''
+							)
+
+			raw_gray_sc = cv.cvtColor(raw, cv.COLOR_BGR2GRAY)
+			frame_cropped = raw_gray_sc[cropp_f[0][0]: cropp_f[0][1], cropp_f[1][0]: cropp_f[1][1]]
+			frame_blured = cv.GaussianBlur(frame_cropped, (blur_kf, blur_kf), cv.BORDER_DEFAULT)
+			ret3, frame_devided = cv.threshold(frame_blured,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
+			frame_cny = cv.Canny(frame_devided, CNY_kf_bottom, CNY_kf_up)
+
+			lines = cv.HoughLinesP(frame_cny, 1, np.pi / 180, threshold=threshold, minLineLength=minLineLength, maxLineGap=maxLineGap)
+
+			raw = show_screen_data(raw, scrn_data)
+
+			cv.imshow('raw', raw)
+
+			key = cv.waitKey(25) & 0xFF
+			if key == ord('q'):
+				break
+
+
+# def draw_lines(image, cropp_f, lines):
+# 	if lines is not None:
+# 		for i in range(0, len(lines)):
+# 			line = lines[i]
+
+# 			point_1 = (line[0] + cropp_f[1][0], line[1] + cropp_f[0][0])
+# 			point_2 = (line[2] + cropp_f[1][0], line[3] + cropp_f[0][0])
+
+# 			cv.line(image, point_1, point_2, (0,100,255), 3, cv.LINE_AA)
+# 			raw = cv.circle(image, point_1, 2, (200, 0, 0), 2)
+# 			raw = cv.circle(image, point_2, 2, (200, 0, 0), 2)
+# 	return raw
+
+
 set_camera(0)
-
-
-
-
-
+find_lines(0)
 
 			# frame_CNY = cv.Canny(frame_CNY, CNY_kf_bottom, CNY_kf_up)
 
