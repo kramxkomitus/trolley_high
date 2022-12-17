@@ -167,9 +167,21 @@ def set_camera(cam_No):
 
 			vek_sort = sorted(vek, key= lambda x: -x[0][1])
 
-			raw = cv.circle(raw, vek_sort[0][0], 10, (0, 255, 0), 2)
-			raw = cv.circle(raw, vek_sort[1][0], 10, (0, 255, 0), 2)
+			if len(vek_sort) > 1:
+				raw = cv.circle(raw, vek_sort[0][0], 10, (0, 255, 0), 2)
+				raw = cv.circle(raw, vek_sort[1][0], 10, (0, 255, 0), 2)
 
+				direction = ((
+					int((vek_sort[0][0][0] + vek_sort[1][0][0]) / 2),
+					int((vek_sort[0][0][1] + vek_sort[1][0][1]) / 2)),
+					(
+					int((vek_sort[0][1][0] + vek_sort[1][1][0]) / 2),
+					int((vek_sort[0][1][1] + vek_sort[1][1][1]) / 2))
+				)
+			
+				cv.line(raw, direction[0], direction[1], (255,100,255), 3, cv.LINE_AA)
+
+				tetha = direction[0][0] - dire  
 			# frame_devided = cv.adaptiveThreshold(frame_blured, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2)
 			# frame_devided = cv.adaptiveThreshold(frame_blured, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 11, 2)
 
