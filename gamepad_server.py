@@ -2,6 +2,8 @@ import pygame
 import serial
 import time 
 import subprocess 
+import os
+
 
 L_vel = 0
 R_vel = 0
@@ -37,6 +39,7 @@ def set_vel(R, L):
 controller_MAC = "C8:3F:26:B8:00:16"
 
 print("finding gamepad, MAC:" + controller_MAC)
+# output = subprocess.getoutput("bluetoothctl scan on")
 output = ""
 while "Connection successful" not in output:
     output = subprocess.getoutput("bluetoothctl connect " + controller_MAC)
@@ -50,6 +53,13 @@ if HW.isOpen() == True:
 else:
     print("can't reach " + serial_path)
 pygame.init()
+
+print("initial video")
+
+# os.environ["SDL_VIDEODRIVER"] = "dummy"
+print("success")
+
+
 pygame.joystick.init()
 joystick = pygame.joystick.Joystick(0)
 joystick.init()
@@ -64,8 +74,8 @@ while True:
     X = joystick.get_button(2)
     Y = joystick.get_button(0)
 
-    left_inv, right_inv = joystick.get_button(4), joystick.get_button(5)
-    left, right = joystick.get_axis(5), joystick.get_axis(2)
+    left_inv, right_inv = joystick.get_button(6), joystick.get_button(7)
+    left, right = joystick.get_axis(4), joystick.get_axis(5)
 
 
     if A:
@@ -86,24 +96,24 @@ while True:
 
     R_str = "R " + str(R_vel * (1 - 2 * right_inv))
     L_str = "L " + str(L_vel * (1 - 2 * left_inv))
-    print(R_str + "       " + L_str + '\r')
+    print(L_str + "       " + R_str + '\r')
     HW.write((R_str + '\n').encode())
     HW.write((L_str + '\n').encode())
-    time.sleep(0.01)
+    time.sleep(0.001)
     
     
 
 
 
 
-while True:
-    serial_path = "/dev/ttyUSB1"
-    #  + str(i)
-    HW = serial.Serial(serial_path, baudrate=115200)
-    if HW.isOpen() == True:
-        print("found" + serial_path)
-        break
-    print("can't reach " + serial_path)
+# while True:
+#     serial_path = "/dev/ttyUSB1"
+#     #  + str(i)
+#     HW = serial.Serial(serial_path, baudrate=115200)
+#     if HW.isOpen() == True:
+#         print("found" + serial_path)
+#         break
+#     print("can't reach " + serial_path)
     
 
-pygame.init()
+# pygame.init()

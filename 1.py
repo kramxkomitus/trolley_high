@@ -5,11 +5,12 @@ import cv2 as cv
 import math
 import os
 
+
 def show_screen_data(frame, string):	
 	# Вопрос по ООП. Если я хочу сделать это методом како-то внешнего (написанного не мной класса), 
 	# то я должен делать какой-то оберточный класс или все же это должно остаться просто функцией.
 	font_scale = 0.7
-	font_RGB = (200, 0, 0)
+	font_RGB = (255, 0, 0)
 	font_thinckness = 1
 	i = 0
 	string = str(string)
@@ -30,17 +31,19 @@ def load_settings(cam_No):
 
 	import json
 	
-	file_name = "cam_" + str(cam_No) + "_llsettings.json"
+	file_name = "cam_" + str(cam_No) + "_settings.json"
 	cam_settings = {
 		'blur_kf' : 3, 
 		'CNY_kf_bottom' : 125,
 		'CNY_kf_up' : 175,
 		'threshold' : 2,
 		'minLineLength' : 10,
-		'maxLineGap' : 5}
+		'maxLineGap' : 5,
+		'light' : 100
+		}
 	try:
 		file = open(file_name, 'r', encoding='utf8')
-		data = json.load(file)
+		cam_settings = json.load(file)
 	except FileNotFoundError:
 		print("settings are not found, creating defaulf settings file...")
 		file = open(file_name, 'w+', encoding='utf8')
@@ -51,123 +54,211 @@ def load_settings(cam_No):
 	print(json.dumps(cam_settings, indent=4, sort_keys=True))
 	return cam_settings
 
-def set_camera(cam_No=0):
 
-	i = 0
+def save_settings(cam_No, cam_settings):
 
+	import json
+
+	file_name = "cam_" + str(cam_No) + "_settings.json"
+
+	try:
+		file = open(file_name, 'w+', encoding='utf8')
+		json.dump(cam_settings, file)
+	except FileNotFoundError:
+		print("problem")
+	finally:
+		file.close()
+	print("settings are saved:")
+	print(json.dumps(cam_settings, indent=4, sort_keys=True))
+
+def set_light(val):
+	import serial
+	import time
+	serial_path = "/dev/ttyUSB0"
+	HW = serial.Serial(serial_path, baudrate=115200)
+	if HW.isOpen() == True:
+		print("found" + serial_path)
+	parameter = 3 * (" " + str(val))
+	print(parameter) 
+	HW.write(("w" + parameter + "\n").encode())
+
+
+
+  
+def set_camera(cam_No):
+	cropp_f = (
+		(65, 380), 	#heigh
+		(170, 415)	#width
+		)
 	cam = cv.VideoCapture(cam_No)
+	
 	if (cam.isOpened()== False):
 		print("Error opening video file")
 		return False
-
+	
 	cam_set = load_settings(cam_No)
+
 	blur_kf = cam_set['blur_kf']
 	CNY_kf_up = cam_set['CNY_kf_up']
 	CNY_kf_bottom = cam_set['CNY_kf_bottom']
 	threshold = cam_set['threshold']
 	minLineLength = cam_set['minLineLength']
 	maxLineGap = cam_set['maxLineGap']
+	light = cam_set['light']
+
+	set_light(light)
 
 	while(cam.isOpened()):
-
-		scrn_data_CNY = ('koeffs: \n' +
-						'blur_kf = ' + str(blur_kf) + ' | o/p\n' +
-						'CNY_kf_up =' + str(CNY_kf_up) + ' | l/,\n' +
-						'CNY_kf_bottom =' + str(CNY_kf_bottom) + ' | k/m'
-						)
-		scrn_data =  ('Line detection settings: \n' +
-						'threshold = ' + str(threshold) + ' | w/s\n' +
-						'minLineLength =' + str(minLineLength) + ' | e/d\n' +
-						'maxLineGap =' + str(maxLineGap) + 'r/f\n' +
-						'exit: \'q\''
-						)
-
-		ret, frame = cam.read()
+	
+		ret, raw = cam.read()
 		if ret == True:
-			raw = frame
-			frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-			frame_CNY = cv.GaussianBlur(frame, (blur_kf, blur_kf), cv.BORDER_DEFAULT)
-			frame_CNY = cv.Canny(frame_CNY, CNY_kf_bottom, CNY_kf_up)
 
-			lines = cv.HoughLinesP(frame_CNY, 1, np.pi / 180, threshold=threshold, minLineLength=minLineLength, maxLineGap=maxLineGap)
+			scrn_data = ('koeffs: \n' +
+	
+							'blur_kf = ' + str(blur_kf) + ' | W/w\n' +
+							'CNY_kf_up =' + str(CNY_kf_up) + ' | R/r\n' +
+							'CNY_kf_bottom =' + str(CNY_kf_bottom) + ' | E/e\n' + 
+							'\n' + 	
+							'Line detection settings: \n' +
+							'\n' +
+							'threshold = ' + str(threshold) + ' | T/t\n' +
+							'minLineLength =' + str(minLineLength) + ' | F/f\n' +
+							'maxLineGap =' + str(maxLineGap) + ' | G/g\n' +
+							'\n'+
+							'light = ' + str(light) + ' | L/l\n' + 
+							'save settings: \'s\'' + 
+							'exit: \'q\''
+							)
+
+			raw_gray_sc = cv.cvtColor(raw, cv.COLOR_BGR2GRAY)
+
+			frame_cropped = raw_gray_sc[cropp_f[0][0]: cropp_f[0][1], cropp_f[1][0]: cropp_f[1][1]]
+			
+			frame_blured = cv.GaussianBlur(frame_cropped, (blur_kf, blur_kf), cv.BORDER_DEFAULT)
+			
+			ret3, frame_devided = cv.threshold(frame_blured,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
+			
+			frame_cny = cv.Canny(frame_devided, CNY_kf_bottom, CNY_kf_up)
+
+
+
+			lines = cv.HoughLinesP(frame_cny, 1, np.pi / 180, threshold=threshold, minLineLength=minLineLength, maxLineGap=maxLineGap)
+
 			if lines is not None:
 				for i in range(0, len(lines)):
 					l = lines[i][0]
-					cv.line(frame, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv.LINE_AA)
-			
-			frame = show_screen_data(frame, scrn_data)
-			frame_CNY = show_screen_data(frame_CNY, scrn_data_CNY)
-			cv.imshow('camera', raw)
-			cv.imshow('original', frame)
-			cv.imshow('output', frame_CNY)
+					cv.line(raw, 
+					(
+						l[0] + cropp_f[1][0], 
+						l[1] + cropp_f[0][0]
+						), 
+						(
+						l[2] + cropp_f[1][0], 
+						l[3] + cropp_f[0][0]
+						),
+						(0,100,255), 3, cv.LINE_AA)
 
 
-		# Press Q on keyboard to exit
+
+			# frame_devided = cv.adaptiveThreshold(frame_blured, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2)
+			# frame_devided = cv.adaptiveThreshold(frame_blured, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 11, 2)
+
+
+
+			raw = show_screen_data(raw, scrn_data)
+
+			cv.imshow('raw', raw)
+			cv.imshow('devided', frame_devided)
+			cv.imshow('cny', frame_cny)
+			# cv.imshow('output', frame_cropped)
+
+
+			key = cv.waitKey(25) & 0xFF
+	# Press Q on keyboard to exit
 			key = cv.waitKey(25) & 0xFF
 			if key == ord('q'):
 				break
 
-			if key == ord('o'):
+			if key == ord('W'):
 				blur_kf += 2
-			if key == ord('p'):
+			if key == ord('w'):
 				blur_kf -= 2
 
-			if key == ord('k'):
+			if key == ord('E'):
 				CNY_kf_bottom += 2
-			if key == ord('m'):
+			if key == ord('e'):
 				CNY_kf_bottom -= 2
 
-			if key == ord('l'):
+			if key == ord('R'):
 				CNY_kf_up += 2
-			if key == ord(','):
+			if key == ord('r'):
 				CNY_kf_up -= 2
 
-			if key == ord('w'):
+			if key == ord('T'):
 				threshold += 2
-			if key == ord('s'):
+			if key == ord('t'):
 				threshold -= 2
 
-			if key == ord('e'):
+			if key == ord('F'):
 				minLineLength += 2
-			if key == ord('d'):
+			if key == ord('f'):
 				minLineLength -= 2
 
-			if key == ord('r'):
+			if key == ord('G'):
 				maxLineGap += 2
-			if key == ord('f'):
+			if key == ord('g'):
 				maxLineGap -= 2
 
-			if key == ord('z'):
-				# raw = show_screen_data(raw, scrn_data)
-				save_frame(raw, i)
-				i =+ 1
-		else:
-			break
+			if key == ord('L'):
+				light += 2
+				set_light(light)
+			if key == ord('l'):
+				light -= 2
+				set_light(light)
 
+			if key == ord('s'):
+				cam_set['blur_kf'] = blur_kf
+				cam_set['CNY_kf_up'] = CNY_kf_up
+				cam_set['CNY_kf_bottom'] = CNY_kf_bottom
+				cam_set['threshold'] = threshold
+				cam_set['minLineLength'] = minLineLength
+				cam_set['maxLineGap'] = maxLineGap
+				cam_set['light'] = light
+				save_settings(cam_No, cam_set)
 	cam.release()
 	cv.destroyAllWindows()
 
-
-
-
-def save_frame(frame, i):
-	import os
-  
-	# Image directory
-	# directory = ./
-	filename = '9.12.22' + str(i) + '.jpg'
-	cv.imwrite(filename, frame)
-  
-
-
-d = load_settings(0)
-type(d)
-print(d['blur_kf'])
 
 set_camera(0)
 
 
 
+
+
+
+			# frame_CNY = cv.Canny(frame_CNY, CNY_kf_bottom, CNY_kf_up)
+
+			# lines = cv.HoughLinesP(frame_CNY, 1, np.pi / 180, threshold=threshold, minLineLength=minLineLength, maxLineGap=maxLineGap)
+
+
+			# if lines is not None:
+			# 	for i in range(0, len(lines)):
+			# 		l = lines[i][0]
+			# 		cv.line(frame, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv.LINE_AA)
+			
+
+
+# def save_frame(frame, i):
+# 	from datetime import date
+# 	# Image directory
+# 	# directory = ./
+
+
+# 	today = date.today()
+# 	print("Today's date:", today)
+
+# 	filename = '9.12.22' + str(i) + '.jpg'
+# 	cv.imwrite(filename, frame)
 
 
 
@@ -186,3 +277,9 @@ set_camera(0)
 			# 		pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
 			# 		pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
 			# 		cv.line(frame, pt1, pt2, (0,0,255), 3, cv.LINE_AA)
+
+
+
+
+
+
