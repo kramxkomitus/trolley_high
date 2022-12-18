@@ -372,5 +372,3 @@ set_camera(0)
 find_lines(0)
 
 
-
-

@@ -12,12 +12,10 @@ R_vel = 0
 
 def trig_func(axis):
     
-    from math import sqrt
     axis = int(500 * (axis + 1))
     if axis < 1:
         return 0
     else:
-        axis = int(1000 * sqrt(axis/1000))
         return axis
 
 def set_vel(L, R):
@@ -49,6 +47,10 @@ def set_vel(L, R):
         L_vel += 1
 
     return
+
+
+
+
 
 
 controller_MAC = "C8:3F:26:B8:00:16"
@@ -130,10 +132,10 @@ while True:
 
     HW.write((R_str + '\n').encode())
     HW.write((L_str + '\n').encode())
+    time.sleep(0.002)
+    
+    
 
-    time.sleep(0.001)
-    
-    
 
 
 
