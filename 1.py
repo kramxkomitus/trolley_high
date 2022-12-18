@@ -169,8 +169,14 @@ def set_camera(cam_No):
 				)
 			
 				cv.line(raw, direction[0], direction[1], (255,100,255), 3, cv.LINE_AA)
+				
+				from numpy.linalg import norm
 
-				# tetha = direction[0][0] - dire  
+				dir = (direction[0][0] - direction[1][0],  direction[0][1] - direction[1][1])
+				cos_angle = np.dot(dir, (1, 0)) / norm(dir)
+				tetha = np.arccos(cos_angle)
+
+				scrn_data = scrn_data + "\n " + str(tetha)
 			# frame_devided = cv.adaptiveThreshold(frame_blured, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, 2)
 			# frame_devided = cv.adaptiveThreshold(frame_blured, 255, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 11, 2)
 
