@@ -4,7 +4,6 @@ import time
 import subprocess 
 import os
 
-
 L_vel = 0
 R_vel = 0
 
@@ -34,8 +33,6 @@ def set_vel(R, L):
     return
 
 
-
-
 controller_MAC = "C8:3F:26:B8:00:16"
 
 print("finding gamepad, MAC:" + controller_MAC)
@@ -52,11 +49,12 @@ if HW.isOpen() == True:
     print("found" + serial_path)
 else:
     print("can't reach " + serial_path)
+
 pygame.init()
 
 print("initial video")
 
-# os.environ["SDL_VIDEODRIVER"] = "dummy"
+os.environ["SDL_VIDEODRIVER"] = "dummy"
 print("success")
 
 
@@ -99,7 +97,7 @@ while True:
     print(L_str + "       " + R_str + '\r')
     HW.write((R_str + '\n').encode())
     HW.write((L_str + '\n').encode())
-    time.sleep(0.001)
+    time.sleep(0.005)
     
     
 
