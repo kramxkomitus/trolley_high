@@ -4,7 +4,7 @@ import cv2 as cv
 
 import HW_interface as HW
 
-filter_window = list()
+filter_window = 10
 
 cropp_f = (
 	(65, 380), 	#heigh
@@ -21,11 +21,15 @@ cam_settings = {
 	'light' : 100
 }
 
+dir_lists = ((list(), list()), (list(), list()))
+			
+
 def save_frame(frame, i):
 	from datetime import date
 	today = date.today()
-	print("Today's date:", today)
-	filename = today + ' ' + str(i) + '.jpg'
+	time = date.ctime()
+	print("Today's date:", today, time)
+	filename = today + time + ' ' + str(i) + '.jpg'
 	cv.imwrite(filename, frame)
 
 def show_screen_data(frame, string):	
@@ -156,23 +160,13 @@ def calc_direction(vek_list):
 		return direction
 	else:
 		return ((0,0),(0,0))
-				# cv.line(output, direction[0], direction[1], (255,100,255), 3, cv.LINE_AA)
-# from numpy.linalg import norm
-# 
-				# dir = (direction[0][0] - direction[1][0],  direction[0][1] - direction[1][1])
-				# cos_angle = np.dot(dir, (1, 0)) / norm(dir)
-				# tetha = np.arccos(cos_angle)
-# 
-				# scrn_data = scrn_data + "\n " + str(tetha)
-# 
-# 
 
 
-def filter(val):
-	filter_window.append(val)
-	if len(filter_window) > 10:
-		filter_window.pop(0)
-	return sum(filter_window) / len(filter_window)
+def filter(filter_arr, val):
+	filter_arr.append(val)
+	if len(filter_arr) > filter_window:
+		filter_arr.pop(0)
+	return sum(filter_arr) / len(filter_arr)
 
 
 def set_camera(cam_No):
@@ -221,7 +215,21 @@ def set_camera(cam_No):
 			lines = find_lines(frame_cny)
 			draw_lines(raw, lines)
 			dir = calc_direction(lines)
+			
+
+			
+			filtered_dir = (
+				(
+					filter(dir_lists, dir[0][0]),
+					filter(dir_lists, dir[0][1]),
+				), 
+				(
+					filter(dir_lists, dir[1][0]),
+					filter(dir_lists, dir[1][1]),
+				))
+
 			draw_lines(raw, [dir], 255, 0, 255)
+			draw_lines(raw, [filtered_dir], 255, 255, 255)
 
 			raw = show_screen_data(raw, scrn_data)
 
@@ -318,7 +326,7 @@ def find_lines(cam_No):
 	maxLineGap = cam_set['maxLineGap']
 	light = cam_set['light']
 
-	set_light(light)
+	HW.set_light(light)
 
 	while(cam.isOpened()):
 	
@@ -359,66 +367,9 @@ def find_lines(cam_No):
 				break
 
 
-# def draw_lines(image, cropp_f, lines):
-# 	if lines is not None:
-# 		for i in range(0, len(lines)):
-# 			line = lines[i]
-
-# 			point_1 = (line[0] + cropp_f[1][0], line[1] + cropp_f[0][0])
-# 			point_2 = (line[2] + cropp_f[1][0], line[3] + cropp_f[0][0])
-
-# 			cv.line(image, point_1, point_2, (0,100,255), 3, cv.LINE_AA)
-# 			raw = cv.circle(image, point_1, 2, (200, 0, 0), 2)
-# 			raw = cv.circle(image, point_2, 2, (200, 0, 0), 2)
-# 	return raw
-
 
 set_camera(0)
 find_lines(0)
-
-			# frame_CNY = cv.Canny(frame_CNY, CNY_kf_bottom, CNY_kf_up)
-
-			# lines = cv.HoughLinesP(frame_CNY, 1, np.pi / 180, threshold=threshold, minLineLength=minLineLength, maxLineGap=maxLineGap)
-
-
-			# if lines is not None:
-			# 	for i in range(0, len(lines)):
-			# 		l = lines[i][0]
-			# 		cv.line(frame, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv.LINE_AA)
-			
-
-
-# def save_frame(frame, i):
-# 	from datetime import date
-# 	# Image directory
-# 	# directory = ./
-
-
-# 	today = date.today()
-# 	print("Today's date:", today)
-
-# 	filename = '9.12.22' + str(i) + '.jpg'
-# 	cv.imwrite(filename, frame)
-
-
-
-			# lines = sorted(lines_raw, reverse=True)
-
-
-			# # Draw the lines
-			# if lines is not None:
-			# 	for i in range(0, 5):
-			# 		rho = lines[i][0][0]
-			# 		theta = lines[i][0][1]
-			# 		a = math.cos(theta)
-			# 		b = math.sin(theta)
-			# 		x0 = a * rho
-			# 		y0 = b * rho
-			# 		pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
-			# 		pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
-			# 		cv.line(frame, pt1, pt2, (0,0,255), 3, cv.LINE_AA)
-
-
 
 
 
