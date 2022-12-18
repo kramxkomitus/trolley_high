@@ -1,21 +1,25 @@
-import pygame
-import serial
+import evdev
+from evdev import ecodes
 import time 
 import subprocess 
 import os
+import HW_interface as HW
+
+controller_MAC = "C8:3F:26:B8:00:16"
 
 L_vel = 0
 R_vel = 0
 
-def trig_func(axis):
-    
-    axis = int(500 * (axis + 1))
-    if axis < 1:
-        return 0
-    else:
-        return axis
+left = 0
+right = 0
+
+moment = 0
 
 def set_vel(R, L):
+    if moment < time.time_ns + 1000:
+        return
+
+    moment = time.time_ns
     global L_vel, R_vel
     if R == 0:
         R_vel = 0
@@ -30,88 +34,77 @@ def set_vel(R, L):
         L_vel += 1
     elif L_vel > L:
         L_vel -= 1
-    return
 
 
-controller_MAC = "C8:3F:26:B8:00:16"
-
-print("finding gamepad, MAC:" + controller_MAC)
-# output = subprocess.getoutput("bluetoothctl scan on")
-output = ""
-while "Connection successful" not in output:
-    output = subprocess.getoutput("bluetoothctl connect " + controller_MAC)
-    print(output)
-
-print("finding TTL:")
-serial_path = "/dev/ttyUSB1"
-HW = serial.Serial(serial_path, baudrate=115200)
-if HW.isOpen() == True:
-    print("found" + serial_path)
-else:
-    print("can't reach " + serial_path)
-
-pygame.init()
-
-print("initial video")
-
-os.environ["SDL_VIDEODRIVER"] = "dummy"
-print("success")
-
-
-pygame.joystick.init()
-joystick = pygame.joystick.Joystick(0)
-joystick.init()
-
-left = 0
-right = 0
-
-while True:
-    pygame.event.pump()
-    A = joystick.get_button(0)
-    B = joystick.get_button(1)
-    X = joystick.get_button(2)
-    Y = joystick.get_button(0)
-
-    left_inv, right_inv = joystick.get_button(6), joystick.get_button(7)
-    left, right = joystick.get_axis(4), joystick.get_axis(5)
-
-
-    if A:
-        HW.write(f"start\n".encode())
-        A = 0
-        print("start")
-    if B:
-        HW.write(f"stop\n".encode())
-        B = 0
-        print("stop")
-
-    left = trig_func(left)
-    right = trig_func(right)
-
-    set_vel(left, right)
-
-
-
-    R_str = "R " + str(R_vel * (1 - 2 * right_inv))
-    L_str = "L " + str(L_vel * (1 - 2 * left_inv))
-    print(L_str + "       " + R_str + '\r')
-    HW.write((R_str + '\n').encode())
-    HW.write((L_str + '\n').encode())
-    time.sleep(0.005)
+def find_gamepad():
     
+    print("finding gamepad, MAC:" + controller_MAC)
+    output = ""
+    while "Connection successful" not in output:
+        output = subprocess.getoutput("bluetoothctl connect " + controller_MAC)
+        print(output)
     
+    devices = [evdev.InputDevice(path) for path in evdev.list_devices()]
+    for device in devices:
+        if "Xbox Wireless Controller" in device.name:
+            print("find controller", device.path, device.name, device.phys)
+            return device
+        else:
+            print("error")
+            return False
+
+HW.init_drives()
+HW.send_drives('stop')
+left_dir = 1
+right_dir = 1
+left_abs = 0
+right_abs = 0
+
+Joystik = find_gamepad()
 
 
+if Joystik != False: 
+    # for event in Joystik.read_loop():
+    moment = 0
+    while True:
+        event = Joystik.read_one()    # buttons
+        if event !=  None:
 
+            if event.type == ecodes.EV_KEY:
+                # A button
+                if event.code == 304 and not event.value:
+                    print("\n\n\n start \n\n\n")
+                    HW.send_drives("start")
+                # B button
+                if event.code == 305 and not event.value:
+                    print("\n\n\n stop \n\n\n")
+                    HW.send_drives("stop")
+                # Left bump
+                if event.code == 310:
+                    if event.value:
+                        left_dir = -1
+                    else:
+                        left_dir = 1
+                # Right bump
+                if event.code == 311:
+                    if event.value:
+                        right_dir = -1
+                    else:
+                        right_dir = 1   
 
-# while True:
-#     serial_path = "/dev/ttyUSB1"
-#     #  + str(i)
-#     HW = serial.Serial(serial_path, baudrate=115200)
-#     if HW.isOpen() == True:
-#         print("found" + serial_path)
-#         break
-#     print("can't reach " + serial_path)
-    
+            elif event.type == ecodes.EV_ABS:
+                if event.code == 10:
+                    left_abs = event.value
 
-# pygame.init()
+                    # elif event.code == 9:
+                        # right_abs = event.value
+
+                    left = left_abs * left_dir
+                    # right = right_abs * right_dir
+                    set_vel(left, 0)   
+                    print(L_vel, "\t\t\t", 0)
+
+    # HW.send_drives("R " + str(R_vel))
+    # HW.send_drives("R " + str(R_vel))
+    # time.sleep(0.005)
+
