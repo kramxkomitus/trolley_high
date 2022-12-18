@@ -292,4 +292,134 @@ def set_camera(cam_No):
 	cam.release()
 	cv.destroyAllWindows()
 
+
+
+
+
+ 
+def find_lines(cam_No):
+	cropp_f = (
+		(65, 380), 	#heigh
+		(170, 415)	#width
+		)
+	cam = cv.VideoCapture(cam_No)
+	
+	if (cam.isOpened()== False):
+		print("Error opening video file")
+		return False
+	
+	cam_set = load_settings(cam_No)
+
+	blur_kf = cam_set['blur_kf']
+	CNY_kf_up = cam_set['CNY_kf_up']
+	CNY_kf_bottom = cam_set['CNY_kf_bottom']
+	threshold = cam_set['threshold']
+	minLineLength = cam_set['minLineLength']
+	maxLineGap = cam_set['maxLineGap']
+	light = cam_set['light']
+
+	set_light(light)
+
+	while(cam.isOpened()):
+	
+		ret, raw = cam.read()
+		if ret == True:
+
+			scrn_data = ('koeffs: \n' +
+	
+							'blur_kf = ' + str(blur_kf) + ' | W/w\n' +
+							'CNY_kf_up =' + str(CNY_kf_up) + ' | R/r\n' +
+							'CNY_kf_bottom =' + str(CNY_kf_bottom) + ' | E/e\n' + 
+							'\n' + 	
+							'Line detection settings: \n' +
+							'\n' +
+							'threshold = ' + str(threshold) + ' | T/t\n' +
+							'minLineLength =' + str(minLineLength) + ' | F/f\n' +
+							'maxLineGap =' + str(maxLineGap) + ' | G/g\n' +
+							'\n'+
+							'light = ' + str(light) + ' | L/l\n' + 
+							'save settings: \'s\'' + 
+							'exit: \'q\''
+							)
+
+			raw_gray_sc = cv.cvtColor(raw, cv.COLOR_BGR2GRAY)
+			frame_cropped = raw_gray_sc[cropp_f[0][0]: cropp_f[0][1], cropp_f[1][0]: cropp_f[1][1]]
+			frame_blured = cv.GaussianBlur(frame_cropped, (blur_kf, blur_kf), cv.BORDER_DEFAULT)
+			ret3, frame_devided = cv.threshold(frame_blured,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
+			frame_cny = cv.Canny(frame_devided, CNY_kf_bottom, CNY_kf_up)
+
+			lines = cv.HoughLinesP(frame_cny, 1, np.pi / 180, threshold=threshold, minLineLength=minLineLength, maxLineGap=maxLineGap)
+
+			raw = show_screen_data(raw, scrn_data)
+
+			cv.imshow('raw', raw)
+
+			key = cv.waitKey(25) & 0xFF
+			if key == ord('q'):
+				break
+
+
+# def draw_lines(image, cropp_f, lines):
+# 	if lines is not None:
+# 		for i in range(0, len(lines)):
+# 			line = lines[i]
+
+# 			point_1 = (line[0] + cropp_f[1][0], line[1] + cropp_f[0][0])
+# 			point_2 = (line[2] + cropp_f[1][0], line[3] + cropp_f[0][0])
+
+# 			cv.line(image, point_1, point_2, (0,100,255), 3, cv.LINE_AA)
+# 			raw = cv.circle(image, point_1, 2, (200, 0, 0), 2)
+# 			raw = cv.circle(image, point_2, 2, (200, 0, 0), 2)
+# 	return raw
+
+
 set_camera(0)
+find_lines(0)
+
+			# frame_CNY = cv.Canny(frame_CNY, CNY_kf_bottom, CNY_kf_up)
+
+			# lines = cv.HoughLinesP(frame_CNY, 1, np.pi / 180, threshold=threshold, minLineLength=minLineLength, maxLineGap=maxLineGap)
+
+
+			# if lines is not None:
+			# 	for i in range(0, len(lines)):
+			# 		l = lines[i][0]
+			# 		cv.line(frame, (l[0], l[1]), (l[2], l[3]), (0,0,255), 3, cv.LINE_AA)
+			
+
+
+# def save_frame(frame, i):
+# 	from datetime import date
+# 	# Image directory
+# 	# directory = ./
+
+
+# 	today = date.today()
+# 	print("Today's date:", today)
+
+# 	filename = '9.12.22' + str(i) + '.jpg'
+# 	cv.imwrite(filename, frame)
+
+
+
+			# lines = sorted(lines_raw, reverse=True)
+
+
+			# # Draw the lines
+			# if lines is not None:
+			# 	for i in range(0, 5):
+			# 		rho = lines[i][0][0]
+			# 		theta = lines[i][0][1]
+			# 		a = math.cos(theta)
+			# 		b = math.sin(theta)
+			# 		x0 = a * rho
+			# 		y0 = b * rho
+			# 		pt1 = (int(x0 + 1000*(-b)), int(y0 + 1000*(a)))
+			# 		pt2 = (int(x0 - 1000*(-b)), int(y0 - 1000*(a)))
+			# 		cv.line(frame, pt1, pt2, (0,0,255), 3, cv.LINE_AA)
+
+
+
+
+
+
