@@ -10,6 +10,8 @@ import os
 L_vel = 0
 R_vel = 0
 
+max_speed = 1000
+
 def trig_func(axis):
     
     from math import sqrt
@@ -61,8 +63,18 @@ while "Connection successful" not in output:
     print(output)
 
 print("finding TTL:")
-serial_path = "/dev/ttyUSB1"
+
+
+serial_path = "/dev/ttyUSB0"
 HW = serial.Serial(serial_path, baudrate=115200)
+line = ''
+i = 0
+while "Hardware is started..." not in line:
+    HW = serial.Serial("/dev/ttyUSB" + str(i), baudrate=115200, timeout=0.1)
+    i = (i + 1) % 2
+    line = str(HW.readline())
+    print(line)
+
 if HW.isOpen() == True:
     print("found" + serial_path)
 else:
