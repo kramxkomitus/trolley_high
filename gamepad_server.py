@@ -61,7 +61,7 @@ while "Connection successful" not in output:
     print(output)
 
 print("finding TTL:")
-serial_path = "/dev/ttyUSB0"
+serial_path = "/dev/ttyUSB1"
 HW = serial.Serial(serial_path, baudrate=115200)
 if HW.isOpen() == True:
     print("found" + serial_path)
