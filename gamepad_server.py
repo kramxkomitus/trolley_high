@@ -10,16 +10,16 @@ import os
 L_vel = 0
 R_vel = 0
 
-max_speed = 1000
+max_speed = 1100
 
 def trig_func(axis):
     
     from math import sqrt
-    axis = int(500 * (axis + 1))
+    axis = int(max_speed / 2 * (axis + 1))
     if axis < 1:
         return 0
     else:
-        axis = int(1000 * sqrt(axis/1000))
+        axis = int(max_speed * sqrt(axis/max_speed))
         return axis
 
 def set_vel(L, R):
@@ -31,10 +31,10 @@ def set_vel(L, R):
         elif R_vel < 0:
             R_vel += 1
 
-    elif (-999 < R_vel) and (R_vel > R): 
+    elif (-max_speed  < R_vel) and (R_vel > R): 
         R_vel -= 1
 
-    elif (999 > R_vel) and ( R_vel < R):
+    elif (max_speed > R_vel) and ( R_vel < R):
         R_vel += 1
     
 
@@ -44,10 +44,10 @@ def set_vel(L, R):
         elif L_vel < 0:
             L_vel += 1
 
-    elif (-999 < L_vel) and (L_vel > L): 
+    elif (-max_speed  < L_vel) and (L_vel > L): 
         L_vel -= 1
 
-    elif (999 > L_vel) and ( L_vel < L):
+    elif (max_speed > L_vel) and ( L_vel < L):
         L_vel += 1
 
     return

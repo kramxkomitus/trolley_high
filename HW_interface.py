@@ -7,3 +7,4 @@ def set_light(val):
     if HW.isOpen() == False:
         print("error open ", devices_path)
     HW.write(("w " + 3 * (" " + str(val)) + "\n").encode())
+
