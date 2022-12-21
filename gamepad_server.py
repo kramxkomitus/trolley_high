@@ -104,8 +104,8 @@ while True:
 
     left_inv, right_inv = joystick.get_button(6), joystick.get_button(7)
     left, right = joystick.get_axis(5), joystick.get_axis(4)
-    # drag_right = joystick.get_aget_button(3)
-    # drag_left = joystick.get_aget_button(4)
+    drag_right = joystick.get_button(3)
+    drag_left = joystick.get_button(4)
 
     
 
@@ -118,32 +118,28 @@ while True:
         B = 0
         print("stop")
 
-    # left = trig_func(left)
-    # right = trig_func(right)
-    # if drag_right:
-        # set_vel(500, -500)
-    # if drag_left:
-        # set_vel(-500, 500)
+
     left = trig_func(left) * (1 - 2 * left_inv)
     right = trig_func(right)  * (1 - 2 * right_inv)
 
 
 
-    print(str(left) + "       " + str(right) + '\t\t\t\t', end='')
 
-    set_vel(left, right)
+    if drag_right:
+        set_vel(500, -500)
+        print("drag_right", end='')
+    elif drag_left:
+        set_vel(-500, 500)
+        print("drag_left", end='')
+    else:
+        print(str(left) + "       " + str(right) + '\t\t\t\t', end='')
+        set_vel(left, right)
 
 
     R_str = "R " + str(R_vel)
     L_str = "L " + str(L_vel)
 
     print(L_str + "       " + R_str + '\r')
-
-
-
-    # R_str = "R " + str(R_vel * (1 - 2 * right_inv))
-    # L_str = "L " + str(L_vel * (1 - 2 * left_inv))
-
 
     HW.write((R_str + '\n').encode())
     HW.write((L_str + '\n').encode())
