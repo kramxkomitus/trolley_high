@@ -1,6 +1,3 @@
-
-
-
 import pygame
 import serial
 import time 
@@ -10,7 +7,7 @@ import os
 L_vel = 0
 R_vel = 0
 
-max_speed = 1000
+max_speed = 1100
 
 def trig_func(axis):
     

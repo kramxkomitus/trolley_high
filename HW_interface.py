@@ -1,6 +1,6 @@
 import serial
 # drives_path = "/dev/ttyUSB0"
-devices_path = "/dev/ttyUSB0"
+devices_path = "/dev/ttyUSB1"
 
 def set_light(val):
     HW = serial.Serial(devices_path, baudrate=115200)
