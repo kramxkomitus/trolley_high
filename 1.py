@@ -1,6 +1,7 @@
 # importing libraries
 import numpy as np
 import cv2 as cv
+import time
 
 import HW_interface as HW
 
@@ -21,7 +22,7 @@ cam_settings = {
 	'light' : 100
 }
 
-dir_lists = ((list(), list()), (list(), list()))
+dir_lists = (((list()), (list())), ((list()), (list())))
 			
 
 def save_frame(frame, i):
@@ -142,6 +143,8 @@ def find_lines(frame_cny):
 
 
 def draw_lines(frame, vek_list, B = 0, G = 100, R = 255):
+
+
 	for vek in vek_list:
 		cv.line(frame, vek[0], vek[1], (B, G, R), 3, cv.LINE_AA)
 		frame = cv.circle(frame, vek[0], 4, (255, 0, 0), 2)
@@ -149,7 +152,8 @@ def draw_lines(frame, vek_list, B = 0, G = 100, R = 255):
 	return frame
 
 def calc_direction(vek_list):
-	if len(vek_list) > 2:
+	
+	if vek_list != False and len(vek_list) > 2:
 		direction = ((
 			int((vek_list[0][0][0] + vek_list[1][0][0]) / 2),
 			int((vek_list[0][0][1] + vek_list[1][0][1]) / 2)),
@@ -166,7 +170,10 @@ def filter(filter_arr, val):
 	filter_arr.append(val)
 	if len(filter_arr) > filter_window:
 		filter_arr.pop(0)
-	return sum(filter_arr) / len(filter_arr)
+	if len(filter_arr) > 1:
+		return int(sum(filter_arr) / len(filter_arr))
+	else:
+		return filter_arr[0]
 
 
 def set_camera(cam_No):
@@ -216,16 +223,14 @@ def set_camera(cam_No):
 			draw_lines(raw, lines)
 			dir = calc_direction(lines)
 			
-
-			
 			filtered_dir = (
 				(
-					filter(dir_lists, dir[0][0]),
-					filter(dir_lists, dir[0][1]),
+					filter(dir_lists[0][0], dir[0][0]),
+					filter(dir_lists[0][1], dir[0][1]),
 				), 
 				(
-					filter(dir_lists, dir[1][0]),
-					filter(dir_lists, dir[1][1]),
+					filter(dir_lists[1][0], dir[1][0]),
+					filter(dir_lists[1][1], dir[1][1]),
 				))
 
 			draw_lines(raw, [dir], 255, 0, 255)
@@ -297,6 +302,7 @@ def set_camera(cam_No):
 				cam_settings['maxLineGap'] = maxLineGap
 				cam_settings['light'] = light
 				save_settings(cam_No)
+			time.sleep(0.1)
 	cam.release()
 	cv.destroyAllWindows()
 
@@ -305,70 +311,72 @@ def set_camera(cam_No):
 
 
  
-def find_lines(cam_No):
-	cropp_f = (
-		(65, 380), 	#heigh
-		(170, 415)	#width
-		)
-	cam = cv.VideoCapture(cam_No)
+# def find_lines(frame_cny):
+# 	cropp_f = (
+# 		(65, 380), 	#heigh
+# 		(170, 415)	#width
+# 		)
+# 	# cam = cv.VideoCapture(0)
 	
-	if (cam.isOpened()== False):
-		print("Error opening video file")
-		return False
+# 	# if (cam.isOpened()== False):
+# 		# print("Error opening video file")
+# 		# return False
 	
-	cam_set = load_settings(cam_No)
+# 	# cam_set = load_settings(cam_No)
 
-	blur_kf = cam_set['blur_kf']
-	CNY_kf_up = cam_set['CNY_kf_up']
-	CNY_kf_bottom = cam_set['CNY_kf_bottom']
-	threshold = cam_set['threshold']
-	minLineLength = cam_set['minLineLength']
-	maxLineGap = cam_set['maxLineGap']
-	light = cam_set['light']
+# 	# blur_kf = cam_set['blur_kf']
+# 	# CNY_kf_up = cam_set['CNY_kf_up']
+# 	# CNY_kf_bottom = cam_set['CNY_kf_bottom']
+# 	threshold = cam_settings['threshold']
+# 	minLineLength = cam_settings['minLineLength']
+# 	maxLineGap = cam_settings['maxLineGap']
+# 	# light = cam_set['light']
 
-	HW.set_light(light)
+# 	# HW.set_light(light)
 
-	while(cam.isOpened()):
+# 	# while(cam.isOpened()):
 	
-		ret, raw = cam.read()
-		if ret == True:
+# 		# ret, raw = cam.read()
+# 		# if ret == True:
 
-			scrn_data = ('koeffs: \n' +
+# 			# scrn_data = ('koeffs: \n' +
 	
-							'blur_kf = ' + str(blur_kf) + ' | W/w\n' +
-							'CNY_kf_up =' + str(CNY_kf_up) + ' | R/r\n' +
-							'CNY_kf_bottom =' + str(CNY_kf_bottom) + ' | E/e\n' + 
-							'\n' + 	
-							'Line detection settings: \n' +
-							'\n' +
-							'threshold = ' + str(threshold) + ' | T/t\n' +
-							'minLineLength =' + str(minLineLength) + ' | F/f\n' +
-							'maxLineGap =' + str(maxLineGap) + ' | G/g\n' +
-							'\n'+
-							'light = ' + str(light) + ' | L/l\n' + 
-							'save settings: \'s\'' + 
-							'exit: \'q\''
-							)
+# 			# 				'blur_kf = ' + str(blur_kf) + ' | W/w\n' +
+# 			# 				'CNY_kf_up =' + str(CNY_kf_up) + ' | R/r\n' +
+# 			# 				'CNY_kf_bottom =' + str(CNY_kf_bottom) + ' | E/e\n' + 
+# 			# 				'\n' + 	
+# 			# 				'Line detection settings: \n' +
+# 			# 				'\n' +
+# 			# 				'threshold = ' + str(threshold) + ' | T/t\n' +
+# 			# 				'minLineLength =' + str(minLineLength) + ' | F/f\n' +
+# 			# 				'maxLineGap =' + str(maxLineGap) + ' | G/g\n' +
+# 			# 				'\n'+
+# 			# 				'light = ' + str(light) + ' | L/l\n' + 
+# 			# 				'save settings: \'s\'' + 
+# 			# 				'exit: \'q\''
+# 			# 				)
 
-			raw_gray_sc = cv.cvtColor(raw, cv.COLOR_BGR2GRAY)
-			frame_cropped = raw_gray_sc[cropp_f[0][0]: cropp_f[0][1], cropp_f[1][0]: cropp_f[1][1]]
-			frame_blured = cv.GaussianBlur(frame_cropped, (blur_kf, blur_kf), cv.BORDER_DEFAULT)
-			ret3, frame_devided = cv.threshold(frame_blured,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
-			frame_cny = cv.Canny(frame_devided, CNY_kf_bottom, CNY_kf_up)
+# 			# raw_gray_sc = cv.cvtColor(raw, cv.COLOR_BGR2GRAY)
+# 			# frame_cropped = raw_gray_sc[cropp_f[0][0]: cropp_f[0][1], cropp_f[1][0]: cropp_f[1][1]]
+# 			# frame_blured = cv.GaussianBlur(frame_cropped, (blur_kf, blur_kf), cv.BORDER_DEFAULT)
+# 			# ret3, frame_devided = cv.threshold(frame_blured,0,255,cv.THRESH_BINARY+cv.THRESH_OTSU)
+# 			# frame_cny = cv.Canny(frame_devided, CNY_kf_bottom, CNY_kf_up)
 
-			lines = cv.HoughLinesP(frame_cny, 1, np.pi / 180, threshold=threshold, minLineLength=minLineLength, maxLineGap=maxLineGap)
+# 	lines = cv.HoughLinesP(frame_cny, 1, np.pi / 180, threshold=threshold, minLineLength=minLineLength, maxLineGap=maxLineGap)
+	
+# 	return lines
 
-			raw = show_screen_data(raw, scrn_data)
+# 			# raw = show_screen_data(raw, scrn_data)
 
-			cv.imshow('raw', raw)
+# 			# cv.imshow('raw', raw)
 
-			key = cv.waitKey(25) & 0xFF
-			if key == ord('q'):
-				break
+# 			# key = cv.waitKey(25) & 0xFF
+# 			# if key == ord('q'):
+# 			# 	break
 
 
 
 set_camera(0)
-find_lines(0)
+# # find_lines(0)
 
 

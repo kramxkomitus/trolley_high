@@ -1,5 +1,5 @@
 import serial
-drives_path = "/dev/ttyUSB1"
+# drives_path = "/dev/ttyUSB0"
 devices_path = "/dev/ttyUSB0"
 
 def set_light(val):
@@ -8,3 +8,4 @@ def set_light(val):
         print("error open ", devices_path)
     HW.write(("w " + 3 * (" " + str(val)) + "\n").encode())
 
+set_light(255)
