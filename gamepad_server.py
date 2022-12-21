@@ -10,7 +10,7 @@ import os
 L_vel = 0
 R_vel = 0
 
-max_speed = 1050
+max_speed = 1000
 
 def trig_func(axis):
     
@@ -104,7 +104,10 @@ while True:
 
     left_inv, right_inv = joystick.get_button(6), joystick.get_button(7)
     left, right = joystick.get_axis(5), joystick.get_axis(4)
+    # drag_right = joystick.get_aget_button(3)
+    # drag_left = joystick.get_aget_button(4)
 
+    
 
     if A:
         HW.write(f"start\n".encode())
@@ -117,8 +120,10 @@ while True:
 
     # left = trig_func(left)
     # right = trig_func(right)
-
-
+    # if drag_right:
+        # set_vel(500, -500)
+    # if drag_left:
+        # set_vel(-500, 500)
     left = trig_func(left) * (1 - 2 * left_inv)
     right = trig_func(right)  * (1 - 2 * right_inv)
 
