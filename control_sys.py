@@ -1,38 +1,12 @@
 import HW_interface as HW
+import simple_pid
+from simple_pid import PID
+import time
+import machine_vision as MV
+import cv2 as cv
 
 L_vel, R_vel = int(), int()
 max_speed = 1000
-
-def set_vel(L, R):
-    global L_vel, R_vel
-
-    if R == 0:
-        if R_vel > 0:
-            R_vel -= 1
-        elif R_vel < 0:
-            R_vel += 1
-
-    elif (-max_speed  < R_vel) and (R_vel > R): 
-        R_vel -= 1
-
-    elif (max_speed > R_vel) and ( R_vel < R):
-        R_vel += 1
-    
-
-    if L == 0:
-        if L_vel > 0:
-            L_vel -= 1
-        elif L_vel < 0:
-            L_vel += 1
-
-    elif (-max_speed  < L_vel) and (L_vel > L): 
-        L_vel -= 1
-
-    elif (max_speed > L_vel) and ( L_vel < L):
-        L_vel += 1
-
-    return
-
 
 
 def load_pid_settings(name):
@@ -61,54 +35,86 @@ def load_pid_settings(name):
 	return P, I, D
 
 
-# def save_settings(name, P, I, D):
-# 	import json
-# 	file_name = ("PID__settings" + str(name) + ".json") 
-# # try:
-#     file = open(file_name, 'w+', encoding='utf8')
-#     #     loaded = dict()
-    #     loaded['P'] = P
-    # 	loaded['I'] = I
-    # 	loaded['D']	= D
-    # 	json.dump(cam_settings, file)
-    # except FileNotFoundError:
-    # 	print("problem")
-    # finally:
-    # 	file.close()
-    # print("settings are saved:")
-    # print(json.dumps(cam_settings, indent=4, sort_keys=True))
+def save_settings(name, P, I, D):
+
+	import json
+	file_name = "PID_settings_" + str(name)+ ".json"
+	loaded = {
+        'P' : P,
+        'I' : I,
+        'D' : D
+        }
+	try:
+		file = open(file_name, 'w+', encoding='utf8')
+		json.dump(loaded, file)
+	except FileNotFoundError:
+		print("error")
+	finally:
+		file.close()
 
 
-import simple_pid
-from simple_pid import PID
-import time
-import machine_vision as MV
-left = max_speed
-right = max_speed
 
-P, I, D = load_pid_settings('1')
+        #разделить нормально функции, произвести детект, произвести расчет. выдать это в пид
+def control():
+    P, I, D = load_pid_settings('1')
+    pid = PID(P, I, D)
+    pid.setpoint = 0
+    pid.sample_time(0.5)
+
+    cam_No = 0
+    cam_settings = MV.load_settings(cam_No)
+
+    threshold = cam_settings['threshold']
+    minLineLength = cam_settings['minLineLength']
+    maxLineGap = cam_settings['maxLineGap']
+    blur_kf = cam_settings['blur_kf']
+    CNY_kf_up = cam_settings['CNY_kf_up']
+    CNY_kf_bottom = cam_settings['CNY_kf_bottom']
+    light = cam_settings['light']
+    
+    HW.set_light(light)
+
+    cam = cv.VideoCapture(cam_No)
+
+    if (cam.isOpened()== False):
+        print("Error opening video file")
+        return False
+    
+    cur_time = time.monotonic()
+	
+    while(cam.isOpened()):
+        ret, raw = cam.read()
+        if ret == True:
+            frame_devided, frame_cny = MV.image_processing(raw)
+            lines = MV.find_lines(frame_cny)
+            angle, dir = MV.calc_direction(lines)
+            N = ((320, 480), (320 + dir[0], 240 + dir[1]))
+            MV.draw_lines(raw, [N], 255, 0, 255)
+            time_period, cur_time = time.monotonic() - cur_time, time.monotonic()
+            scrn_data = 'angle: ' + str(angle) + '\ntime: ' + f'{time_period:.3f}' + 'sec'
+            raw = MV.show_screen_data(raw, scrn_data)
+            cv.imshow('raw', raw)
+            key = cv.waitKey(25) & 0xFF
+            if key == ord('q'):
+                break
+        
+            pid.update(angle)
+            delta = pid.output()
+            left = max_speed
+            right= max_speed
+            if angle > 0:
+                left -= delta
+            else:
+                right -= delta
+            print(str(left) + "       " + str(right) + '\t\t\t\t', end='')
+    
+            R_str = "R " + str(right)
+            L_str = "L " + str(left)
+
+        HW.write(('R' + str(right) + '\n').encode())
+        HW.write((L_str + '\n').encode())
+        time.sleep(0.001)
 
 
-pid = PID(P, I, D)
-pid.setpoint = 0
-pid.sample_time(0.5)
-
-while(True):
-    #разделить нормально функции, произвести детект, произвести расчет. выдать это в пид
-
-    angle = MV.get_direction()
-    pid.update(angle)
-    delta = pid.output
-    #отправить эту дельту на движки
-
-
-print(str(left) + "       " + str(right) + '\t\t\t\t', end='')
-set_vel(left, right)
-
-R_str = "R " + str(R_vel)
-L_str = "L " + str(L_vel)
-
-print(L_str + "       " + R_str + '\r')
-HW.write((R_str + '\n').encode())
-HW.write((L_str + '\n').encode())
-time.sleep(0.001)
+    cam.release()
+    cv.destroyAllWindows()
