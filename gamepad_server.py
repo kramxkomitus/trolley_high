@@ -15,25 +15,25 @@ right = 0
 
 moment = 0
 
-def set_vel(R, L):
-    if moment < time.time_ns + 1000:
-        return
+# def set_vel(R, L):
+    # # if moment < time.time_ns + 1000:
+    #     # return
 
-    moment = time.time_ns
-    global L_vel, R_vel
-    if R == 0:
-        R_vel = 0
-    elif R > R_vel >= 0 :
-        R_vel += 1
-    elif R_vel > R:
-        R_vel -= 1
+    # # moment = time.time_ns
+    # global L_vel, R_vel
+    # if R == 0:
+    #     R_vel = 0
+    # elif R > R_vel >= 0 :
+    #     R_vel += 1
+    # elif R_vel > R:
+    #     R_vel -= 1
 
-    if L == 0:
-        L_vel = 0
-    elif L > L_vel >= 0 :
-        L_vel += 1
-    elif L_vel > L:
-        L_vel -= 1
+    # if L == 0:
+    #     L_vel = 0
+    # elif L > L_vel >= 0 :
+    #     L_vel += 1
+    # elif L_vel > L:
+    #     L_vel -= 1
 
 
 def find_gamepad():
@@ -65,19 +65,19 @@ Joystik = find_gamepad()
 
 if Joystik != False: 
     # for event in Joystik.read_loop():
-    moment = 0
-    while True:
-        event = Joystik.read_one()    # buttons
-        if event !=  None:
 
+
+
+    for event in Joystik.read_loop():
+        if event !=  None:
             if event.type == ecodes.EV_KEY:
                 # A button
                 if event.code == 304 and not event.value:
-                    print("\n\n\n start \n\n\n")
+                    print("\n\t\t start \n")
                     HW.send_drives("start")
                 # B button
                 if event.code == 305 and not event.value:
-                    print("\n\n\n stop \n\n\n")
+                    print("\n\t\t stop \n")
                     HW.send_drives("stop")
                 # Left bump
                 if event.code == 310:
@@ -93,16 +93,18 @@ if Joystik != False:
                         right_dir = 1   
 
             elif event.type == ecodes.EV_ABS:
+                # left trigger
                 if event.code == 10:
                     left_abs = event.value
+                # right trigger
+                elif event.code == 9:
+                    right_abs = event.value
 
-                    # elif event.code == 9:
-                        # right_abs = event.value
-
-                    left = left_abs * left_dir
+                left = left_abs * left_dir
+                right = right_abs * right_dir
                     # right = right_abs * right_dir
-                    set_vel(left, 0)   
-                    print(L_vel, "\t\t\t", 0)
+                    # set_vel(left, 0)   
+                print(left, "\t\t\t", right)
 
     # HW.send_drives("R " + str(R_vel))
     # HW.send_drives("R " + str(R_vel))
