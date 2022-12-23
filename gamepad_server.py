@@ -2,6 +2,7 @@ import evdev
 from evdev import ecodes
 import subprocess 
 import HW_interface as HW
+import control_sys as CS
 
 controller_MAC = "C8:3F:26:B8:00:16"
 
@@ -52,12 +53,17 @@ if Joystik != False:
                         left_dir = -1
                     else:
                         left_dir = 1
-                # Right bump
+                # Right bump[]
                 if event.code == 311:
                     if event.value:
                         right_dir = -1
                     else:
                         right_dir = 1   
+
+                # Right bump
+                if event.code == 158:
+                    if not event.value:
+                        CS.control()
 
             elif event.type == ecodes.EV_ABS:
                 # left trigger

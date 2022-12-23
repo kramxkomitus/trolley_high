@@ -6,7 +6,7 @@ import cv2 as cv
 import HW_interface as HW
 
 L_vel, R_vel = int(), int()
-max_speed = 1000
+max_speed = 600
 
 
 def load_pid_settings(name):
@@ -60,6 +60,7 @@ def control():
     pid = PID(P, I, D)
     pid.setpoint = 0
     pid.sample_time = 0.3
+    pid.output_limits = (0, 2*max_speed)
 
     cam_No = 0
     cam_settings = MV.load_settings(cam_No)
