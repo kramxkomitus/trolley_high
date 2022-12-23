@@ -1,9 +1,9 @@
 import HW_interface as HW
-import simple_pid
 from simple_pid import PID
 import time
 import machine_vision as MV
 import cv2 as cv
+import HW_interface as HW
 
 L_vel, R_vel = int(), int()
 max_speed = 1000
@@ -14,9 +14,9 @@ def load_pid_settings(name):
 	import json
 	file_name = "PID_settings_" + str(name)+ ".json"
 	loaded = {
-        'P' : 1,
-        'I' : 1,
-        'D' : 1
+        'P' : -1,
+        'I' : -1,
+        'D' : -1
         }
 	try:
 		file = open(file_name, 'r', encoding='utf8')
@@ -71,6 +71,7 @@ def control():
     # CNY_kf_up = cam_settings['CNY_kf_up']
     # CNY_kf_bottom = cam_settings['CNY_kf_bottom']
     light = cam_settings['light']
+    HW.send_drives('start')
     
     HW.set_light(light)
 
@@ -110,25 +111,24 @@ def control():
             left = max_speed
             right= max_speed
             if angle > 0:
-                left -= delta
+                left = left - int(delta)
             else:
-                right -= delta
+                right = right + int(delta)
 
+            scrn_data += '\n delta = ' + str(delta)
             scrn_data += '\n left = ' + str(left) + ' right = ' + str(right)
 
-            L = ((10, 240), (10, left / 4))
-            R = ((630, 240), (630, right / 4))
+            L = ((10, 240), (10, int(left / 4)))
+            R = ((630, 240), (630, int(right / 4)))
 
-            MV.draw_lines(raw, [L, R], 0, 0, 255)
+            MV.draw_lines(raw, [L, R], 0, 200, 100)
 
             raw = MV.show_screen_data(raw, scrn_data)
             cv.imshow('control', raw)
-
-
-            # print(str(left) + "       " + str(right) + '\t\t\t\t', end='')
-    
             R_str = "R " + str(right)
             L_str = "L " + str(left)
+            HW.send_drives(R_str)
+            HW.send_drives(L_str)
 
         # HW.write(('R' + str(right) + '\n').encode())
         # HW.write((L_str + '\n').encode())
