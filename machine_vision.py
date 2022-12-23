@@ -24,7 +24,6 @@ cam_settings = {
 
 dir_lists = (((list()), (list())), ((list()), (list())))
 			
-
 def save_frame(frame, i):
 	from datetime import date
 	today = date.today()
@@ -146,15 +145,25 @@ def find_lines(frame_cny):	#берет детектор границ и возв
 
 def draw_lines(frame, vek_list, B = 0, G = 100, R = 255):
 
-
 	for vek in vek_list:
 		cv.line(frame, vek[0], vek[1], (B, G, R), 3, cv.LINE_AA)
 		frame = cv.circle(frame, vek[0], 4, (255, 0, 0), 2)
 		frame = cv.circle(frame, vek[1], 4, (0, 0, 255), 2)			
 	return frame
 
-def calc_direction(vek_list):
-	
+
+def filter(filter_arr, val):
+	filter_arr.append(val)
+	if len(filter_arr) > filter_window:
+		filter_arr.pop(0)
+	if len(filter_arr) > 1:
+		return int(sum(filter_arr) / len(filter_arr))
+	else:
+		return filter_arr[0]
+
+
+def find_mean_direction(vek_list):
+
 	if vek_list != False and len(vek_list) > 2:
 		direction = ((
 			int((vek_list[0][0][0] + vek_list[1][0][0]) / 2),
@@ -185,14 +194,17 @@ def calc_direction(vek_list):
 		))
 	return filtered_dir
 
-def filter(filter_arr, val):
-	filter_arr.append(val)
-	if len(filter_arr) > filter_window:
-		filter_arr.pop(0)
-	if len(filter_arr) > 1:
-		return int(sum(filter_arr) / len(filter_arr))
-	else:
-		return filter_arr[0]
+
+def calc_mean_dir(mean_line):
+	from numpy.linalg import norm
+	dir = (
+		mean_line[1][0] - mean_line[0][0],
+		mean_line[1][1] - mean_line[0][1]
+	)
+	if dir == (0, 0):
+		return 0, (0, 0)
+	cos_angle = np.dot(dir, (1, 0)) / norm(dir)
+	return (np.arccos(cos_angle) / np.pi * 180 - 90), dir
 
 
 def set_camera(cam_No):
@@ -244,13 +256,13 @@ def set_camera(cam_No):
 			lines = find_lines(frame_cny)
 			draw_lines(raw, lines)
 
-			dir = calc_direction(lines)
+			dir = find_mean_direction(lines)
 			N = ((320 + dir[0][0], 240 + dir[0][1]), (320 + dir[1][0], 240 + dir[1][1]))
 			draw_lines(raw, [N], 255, 0, 255)
 
 
-			angle = np.arccos(cos_angle) / np.pi * 180 - 90
-			scrn_data += ('\n angle = ' + str(angle))
+			# angle = np.arccos(cos_angle) / np.pi * 180 - 90
+			# scrn_data += ('\n angle = ' + str(angle))
 			cur_time = time.monotonic()
 			period = cur_time - tim
 			tim = cur_time
@@ -328,38 +340,27 @@ def set_camera(cam_No):
 	cv.destroyAllWindows()
 
 
-def find_direction(frame_cny):
-	lines = find_lines(frame_cny)
-	dir = calc_direction(lines)
-	dir_vek = (
-		dir[1][0] - dir[0][0],
-		dir[1][1] - dir[1][0]
-	)
-	from numpy.linalg import norm
-	cos_angle = np.dot(dir_vek, (1, 0)) / norm(dir)
-	return np.arccos(cos_angle) / np.pi * 180 - 90
 
+# def get_direction():
+# 	cam = cv.VideoCapture(0)
+# 	if (cam.isOpened()== False):
+# 		print("Error opening video file")
+# 		return False
+# 	load_settings(0)
+# 	while(cam.isOpened()):
+# 		ret, raw = cam.read()
+# 		if ret == True:
+# 			frame_devided, frame_cny = image_processing(raw)
+# 			lines = find_lines(frame_cny)
+# 			draw_lines(raw, lines)
+# 			dir = calc_direction(lines)
+# 			dir_vek = (
+# 				dir[1][0] - dir[0][0],
+# 				dir[1][1] - dir[1][0]
+# 			)
+# 			from numpy.linalg import norm
+# 			cos_angle = np.dot(dir_vek, (1, 0)) / norm(dir)
+# 			return np.arccos(cos_angle) / np.pi * 180 - 90
+# 	cam.release(0)
 
-def get_direction():
-	cam = cv.VideoCapture(0)
-	if (cam.isOpened()== False):
-		print("Error opening video file")
-		return False
-	load_settings(0)
-	while(cam.isOpened()):
-		ret, raw = cam.read()
-		if ret == True:
-			frame_devided, frame_cny = image_processing(raw)
-			lines = find_lines(frame_cny)
-			draw_lines(raw, lines)
-			dir = calc_direction(lines)
-			dir_vek = (
-				dir[1][0] - dir[0][0],
-				dir[1][1] - dir[1][0]
-			)
-			from numpy.linalg import norm
-			cos_angle = np.dot(dir_vek, (1, 0)) / norm(dir)
-			return np.arccos(cos_angle) / np.pi * 180 - 90
-	cam.release(0)
-
-set_camera(0)
+# # set_camera(0)

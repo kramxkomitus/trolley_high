@@ -56,20 +56,20 @@ def save_settings(name, P, I, D):
 
         #разделить нормально функции, произвести детект, произвести расчет. выдать это в пид
 def control():
-    P, I, D = load_pid_settings('1')
-    pid = PID(P, I, D)
-    pid.setpoint = 0
-    pid.sample_time(0.5)
+    # P, I, D = load_pid_settings('1')
+    # pid = PID(P, I, D)
+    # pid.setpoint = 0
+    # pid.sample_time(1)
 
     cam_No = 0
     cam_settings = MV.load_settings(cam_No)
 
-    threshold = cam_settings['threshold']
-    minLineLength = cam_settings['minLineLength']
-    maxLineGap = cam_settings['maxLineGap']
-    blur_kf = cam_settings['blur_kf']
-    CNY_kf_up = cam_settings['CNY_kf_up']
-    CNY_kf_bottom = cam_settings['CNY_kf_bottom']
+    # threshold = cam_settings['threshold']
+    # minLineLength = cam_settings['minLineLength']
+    # maxLineGap = cam_settings['maxLineGap']
+    # blur_kf = cam_settings['blur_kf']
+    # CNY_kf_up = cam_settings['CNY_kf_up']
+    # CNY_kf_bottom = cam_settings['CNY_kf_bottom']
     light = cam_settings['light']
     
     HW.set_light(light)
@@ -87,19 +87,24 @@ def control():
         if ret == True:
             frame_devided, frame_cny = MV.image_processing(raw)
             lines = MV.find_lines(frame_cny)
-            angle, dir = MV.calc_direction(lines)
+            mean_line = MV.find_mean_direction(lines)
+            angle, dir = MV.calc_mean_dir(mean_line)
             N = ((320, 480), (320 + dir[0], 240 + dir[1]))
-            MV.draw_lines(raw, [N], 255, 0, 255)
+            MV.draw_lines(raw, [N, mean_line], 255, 0, 255)
+
             time_period, cur_time = time.monotonic() - cur_time, time.monotonic()
+
             scrn_data = 'angle: ' + str(angle) + '\ntime: ' + f'{time_period:.3f}' + 'sec'
             raw = MV.show_screen_data(raw, scrn_data)
-            cv.imshow('raw', raw)
+            cv.imshow('control', raw)
+            
             key = cv.waitKey(25) & 0xFF
             if key == ord('q'):
                 break
         
-            pid.update(angle)
-            delta = pid.output()
+            # pid.update(angle)
+            # delta = pid.output()
+            delta =4
             left = max_speed
             right= max_speed
             if angle > 0:
@@ -111,10 +116,12 @@ def control():
             R_str = "R " + str(right)
             L_str = "L " + str(left)
 
-        HW.write(('R' + str(right) + '\n').encode())
-        HW.write((L_str + '\n').encode())
-        time.sleep(0.001)
+        # HW.write(('R' + str(right) + '\n').encode())
+        # HW.write((L_str + '\n').encode())
+        # time.sleep(0.001)
 
 
     cam.release()
     cv.destroyAllWindows()
+
+control()

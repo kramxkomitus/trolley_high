@@ -30,6 +30,8 @@ left_abs = 0
 right_abs = 0
 
 Joystik = find_gamepad()
+feedback = ''
+
 
 if Joystik != False: 
     # for event in Joystik.read_loop():
@@ -69,9 +71,12 @@ if Joystik != False:
                 right = right_abs * right_dir
                     # right = right_abs * right_dir
                     # set_vel(left, 0)   
-                print(left, "\t\t\t", right)
+                # new_str = HW.ask_drives()
+                # if new_str != False:
+                    # feedback = new_str
+                HW.send_drives("L " + str(left))
+                HW.send_drives("R " + str(right))
+                print("L ", left, "\t\t\tR ", right, "\t\t\t\t\tFeedback: ", feedback)
 
-    # HW.send_drives("R " + str(R_vel))
-    # HW.send_drives("R " + str(R_vel))
     # time.sleep(0.005)
 
