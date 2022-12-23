@@ -56,10 +56,10 @@ def save_settings(name, P, I, D):
 
         #разделить нормально функции, произвести детект, произвести расчет. выдать это в пид
 def control():
-    # P, I, D = load_pid_settings('1')
-    # pid = PID(P, I, D)
-    # pid.setpoint = 0
-    # pid.sample_time(1)
+    P, I, D = load_pid_settings('1')
+    pid = PID(P, I, D)
+    pid.setpoint = 0
+    pid.sample_time = 0.3
 
     cam_No = 0
     cam_settings = MV.load_settings(cam_No)
@@ -89,29 +89,43 @@ def control():
             lines = MV.find_lines(frame_cny)
             mean_line = MV.find_mean_direction(lines)
             angle, dir = MV.calc_mean_dir(mean_line)
-            N = ((320, 480), (320 + dir[0], 240 + dir[1]))
-            MV.draw_lines(raw, [N, mean_line], 255, 0, 255)
+            N = ((320, 480), (320 + dir[0], 480 + dir[1]))
+            MV.draw_lines(raw, lines, 255, 0, 255)
+            MV.draw_lines(raw, [N], 0, 0, 255)
 
             time_period, cur_time = time.monotonic() - cur_time, time.monotonic()
 
-            scrn_data = 'angle: ' + str(angle) + '\ntime: ' + f'{time_period:.3f}' + 'sec'
-            raw = MV.show_screen_data(raw, scrn_data)
-            cv.imshow('control', raw)
+            scrn_data = 'angle: ' + str(angle) + '\ntime: ' + f'{time_period:.3f}' + 'sec' \
+            + str(mean_line) + '\n P, I, D: ' + str((P, I, D))
             
             key = cv.waitKey(25) & 0xFF
             if key == ord('q'):
                 break
-        
-            # pid.update(angle)
-            # delta = pid.output()
-            delta =4
+            sleeping = pid.sample_time - time_period
+            if sleeping < 0:
+                scrn_data += '\n ERROR'
+                continue
+            time.sleep(sleeping)
+            delta = pid(angle)
             left = max_speed
             right= max_speed
             if angle > 0:
                 left -= delta
             else:
                 right -= delta
-            print(str(left) + "       " + str(right) + '\t\t\t\t', end='')
+
+            scrn_data += '\n left = ' + str(left) + ' right = ' + str(right)
+
+            L = ((10, 240), (10, left / 4))
+            R = ((630, 240), (630, right / 4))
+
+            MV.draw_lines(raw, [L, R], 0, 0, 255)
+
+            raw = MV.show_screen_data(raw, scrn_data)
+            cv.imshow('control', raw)
+
+
+            # print(str(left) + "       " + str(right) + '\t\t\t\t', end='')
     
             R_str = "R " + str(right)
             L_str = "L " + str(left)
