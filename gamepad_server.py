@@ -73,8 +73,8 @@ if Joystik != False:
                 elif event.code == 9:
                     right_abs = event.value
 
-                left = left_abs * left_dir
-                right = right_abs * right_dir
+                left = int(left_abs * left_dir * 0.8)
+                right = int(right_abs * right_dir * 0.8)
                     # right = right_abs * right_dir
                     # set_vel(left, 0)   
                 # new_str = HW.ask_drives()

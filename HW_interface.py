@@ -22,7 +22,7 @@ def send_drives(str):
     uart.write((str + '\n').encode())
 
 def ask_drives():
-    uart = serial.Serial(drives_path, baudrate=115200, timeout=0.001)
+    uart = serial.Serial(drives_path, baudrate=115200, timeout=0.01)
     string = uart.readline().decode('utf-8')
     if string != '':
         return string

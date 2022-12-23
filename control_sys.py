@@ -59,8 +59,9 @@ def control():
     P, I, D = load_pid_settings('1')
     pid = PID(P, I, D)
     pid.setpoint = 0
-    pid.sample_time = 0.3
-    pid.output_limits = (0, 2*max_speed)
+    pid.sample_time = 0.5
+    pid.output_limits = (-2 * max_speed, 2 * max_speed)
+    delta_arr = []
 
     cam_No = 0
     cam_settings = MV.load_settings(cam_No)
@@ -109,12 +110,14 @@ def control():
                 continue
             time.sleep(sleeping)
             delta = pid(angle)
+
+            # delta = MV.filter(delta_arr, delta)
             left = max_speed
             right= max_speed
-            if angle > 0:
-                left = left - int(delta)
-            else:
+            if delta < 0:
                 right = right + int(delta)
+            else:
+                left = left - int(delta)
 
             scrn_data += '\n delta = ' + str(delta)
             scrn_data += '\n left = ' + str(left) + ' right = ' + str(right)
@@ -131,12 +134,8 @@ def control():
             HW.send_drives(R_str)
             HW.send_drives(L_str)
 
-        # HW.write(('R' + str(right) + '\n').encode())
-        # HW.write((L_str + '\n').encode())
-        # time.sleep(0.001)
-
 
     cam.release()
     cv.destroyAllWindows()
 
-control()
+# control()
