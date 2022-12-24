@@ -172,6 +172,16 @@ def find_mean_direction(vek_list):
 			int((vek_list[0][1][0] + vek_list[1][1][0]) / 2),
 			int((vek_list[0][1][1] + vek_list[1][1][1]) / 2))
 					)		
+	if vek_list != False and len(vek_list) == 1:
+		direction = (
+			(
+				int(vek_list[0][0][0]),
+				int(vek_list[0][0][1])
+				),
+			(
+			int(vek_list[0][1][0]),
+			int(vek_list[0][1][1]))
+			)
 	else:
 		direction = ((0,0),(0,0))
 	filtered_dir = (
@@ -363,4 +373,5 @@ def set_camera(cam_No):
 # 			return np.arccos(cos_angle) / np.pi * 180 - 90
 # 	cam.release(0)
 
-# # set_camera(0)
+# set_camera(0)
+

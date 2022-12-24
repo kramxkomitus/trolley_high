@@ -48,7 +48,7 @@ def save_settings(name, P, I, D):
 		file = open(file_name, 'w+', encoding='utf8')
 		json.dump(loaded, file)
 	except FileNotFoundError:
-		print("error")
+		print("error")  
 	finally:
 		file.close()
 
@@ -60,11 +60,14 @@ def control():
     pid = PID(P, I, D)
     pid.setpoint = 0
     pid.sample_time = 0.5
-    pid.output_limits = (-2 * max_speed, 2 * max_speed)
+    pid.output_limits = (-max_speed, max_speed)
     delta_arr = []
+    time_period = 0
+    delta = 0
 
     cam_No = 0
     cam_settings = MV.load_settings(cam_No)
+    watch_dog = 0
 
     # threshold = cam_settings['threshold']
     # minLineLength = cam_settings['minLineLength']
@@ -91,27 +94,18 @@ def control():
             frame_devided, frame_cny = MV.image_processing(raw)
             lines = MV.find_lines(frame_cny)
             mean_line = MV.find_mean_direction(lines)
-            angle, dir = MV.calc_mean_dir(mean_line)
-            N = ((320, 480), (320 + dir[0], 480 + dir[1]))
-            MV.draw_lines(raw, lines, 255, 0, 255)
-            MV.draw_lines(raw, [N], 0, 0, 255)
-
-            time_period, cur_time = time.monotonic() - cur_time, time.monotonic()
-
-            scrn_data = 'angle: ' + str(angle) + '\ntime: ' + f'{time_period:.3f}' + 'sec' \
-            + str(mean_line) + '\n P, I, D: ' + str((P, I, D))
-            
-            key = cv.waitKey(25) & 0xFF
-            if key == ord('q'):
+            if mean_line == ((0, 0),(0, 0)):
+                time.sleep(0.1)
+                angle, dir = 0, (0, 1)
+                watch_dog += 1
+                # continue
+            if watch_dog == 1000000:
                 break
-            sleeping = pid.sample_time - time_period
-            if sleeping < 0:
-                scrn_data += '\n ERROR'
-                continue
-            time.sleep(sleeping)
-            delta = pid(angle)
+            watch_dog = 0
+            angle, dir = MV.calc_mean_dir(mean_line)
 
-            # delta = MV.filter(delta_arr, delta)
+
+            delta = pid(angle)
             left = max_speed
             right= max_speed
             if delta < 0:
@@ -119,23 +113,68 @@ def control():
             else:
                 left = left - int(delta)
 
+            R_str = "R " + str(right+10)
+            L_str = "L " + str(left+10)
+            print(L_str + '\t\t\t' + R_str)
+
+            scrn_data = 'angle: ' + str(angle) + '\ntime: ' + f'{time_period:.3f}' + 'sec' \
+            + str(mean_line) + '\n P, I, D: ' + str((P, I, D))
             scrn_data += '\n delta = ' + str(delta)
             scrn_data += '\n left = ' + str(left) + ' right = ' + str(right)
 
+            N = ((320, 480), (320 + dir[0], 480 + dir[1]))
             L = ((10, 240), (10, int(left / 4)))
             R = ((630, 240), (630, int(right / 4)))
-
+            MV.draw_lines(raw, lines, 255, 0, 255)
             MV.draw_lines(raw, [L, R], 0, 200, 100)
+            MV.draw_lines(raw, [N], 0, 0, 255)
 
-            raw = MV.show_screen_data(raw, scrn_data)
-            cv.imshow('control', raw)
-            R_str = "R " + str(right)
-            L_str = "L " + str(left)
-            HW.send_drives(R_str)
             HW.send_drives(L_str)
+            time.sleep(0.001)
+            HW.send_drives(R_str)
 
+            time_period, cur_time = time.monotonic() - cur_time, time.monotonic()
+            sleeping = pid.sample_time - time_period
+            if sleeping < 0:
+                print('\n ERROR')
+                sleeping = 0
+                # continue
+            time.sleep(sleeping)
+            raw = MV.show_screen_data(raw, scrn_data)
+            # cv.imshow('control', raw)
+            cv.imshow('detector', frame_devided)
+
+            key = cv.waitKey(25) & 0xFF
+            if key == ord('q'):
+                break
+            if key == ord('P'):
+                P += 1
+            if key == ord('p'):
+                P -= 1
+            if key == ord('I'):
+                I += 0.1
+            if key == ord('i'):
+                I -= 0.1
+            if key == ord('D'):
+                D += 1
+            if key == ord('d'):
+                D -= 1
+            if key == ord('s'):
+                save_settings(P, I, D)
+            if key == ord('w'):    
+                pid = PID(P, I, D)
+                pid.setpoint = 0
+                pid.sample_time = 0.5
+                pid.output_limits = (-max_speed, max_speed)
 
     cam.release()
     cv.destroyAllWindows()
+    R_str = "R " + str(10)
+    L_str = "L " + str(10)
+    HW.send_drives(R_str)
+    HW.send_drives(L_str)
+    print(L_str + '\t\t\t' + R_str)
+    
+    
 
-# control()
+control()
