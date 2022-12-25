@@ -17,6 +17,8 @@ cam_settings = {
     'CNY_kf_bottom': 125,
     'CNY_kf_up': 175,
     'threshold': 2,
+    'erode_kernel': 1,
+    'dilate_kernel': 1,
     'minLineLength': 10,
     'maxLineGap': 5,
     'light': 100
@@ -65,6 +67,8 @@ def load_settings(cam_No):
         'CNY_kf_bottom': 125,  # КОСТЫЛЬ
         'CNY_kf_up': 175,  # КОСТЫЛЬ
         'threshold': 2,  # КОСТЫЛЬ
+        'erode_kernel': 1,
+        'dilate_kernel': 1,
         'minLineLength': 10,  # КОСТЫЛЬ
         'maxLineGap': 5,  # КОСТЫЛЬ
         'light': 100  # КОСТЫЛЬ
@@ -76,6 +80,8 @@ def load_settings(cam_No):
         cam_settings['blur_kf'] = loaded['blur_kf']  # КОСТЫЛЬ
         cam_settings['CNY_kf_up'] = loaded['CNY_kf_up']  # КОСТЫЛЬ
         cam_settings['CNY_kf_bottom'] = loaded['CNY_kf_bottom']  # КОСТЫЛЬ
+        cam_settings['erode_kernel'] = loaded['erode_kernel']  # КОСТЫЛЬ
+        cam_settings['dilate_kernel'] = loaded['dilate_kernel']  # КОСТЫЛЬ
         cam_settings['threshold'] = loaded['threshold']  # КОСТЫЛЬ
         cam_settings['minLineLength'] = loaded['minLineLength']  # КОСТЫЛЬ
         cam_settings['maxLineGap'] = loaded['maxLineGap']  # КОСТЫЛЬ
@@ -110,21 +116,30 @@ def save_settings(cam_No):
     print(json.dumps(cam_settings, indent=4, sort_keys=True))
 
 
-def image_processing(raw):  # цель - получить устойчивый детектор границ
+def image_processing(raw, cam_settings):  # цель - получить устойчивый детектор границ
+
 
     blur_kf = cam_settings['blur_kf']
     CNY_kf_up = cam_settings['CNY_kf_up']
     CNY_kf_bottom = cam_settings['CNY_kf_bottom']
     HW.set_light(cam_settings['light'])
+    erode_kernel = cam_settings['erode_kernel']
+    dilate_kernel = cam_settings['dilate_kernel']
+    erode_kernel = np.ones(erode_kernel, np.uint8)
+    dilate_kernel = np.ones(dilate_kernel, np.uint8)
+
     raw_gray_sc = cv.cvtColor(raw, cv.COLOR_BGR2GRAY)
-    frame_cropped = raw_gray_sc[cropp_f[0][0]                                : cropp_f[0][1], cropp_f[1][0]: cropp_f[1][1]]
+    frame_cropped = raw_gray_sc[cropp_f[0][0]
+        : cropp_f[0][1], cropp_f[1][0]: cropp_f[1][1]]
     frame_blured = cv.GaussianBlur(
         frame_cropped, (blur_kf, blur_kf), cv.BORDER_DEFAULT)
     ret3, frame_devided = cv.threshold(
         frame_blured, 0, 255, cv.THRESH_BINARY+cv.THRESH_OTSU)
+    frame_delited = cv.dilate(frame_devided, dilate_kernel)
+    frame_erroded = cv.erode(frame_delited, erode_kernel)
     frame_cny = cv.Canny(frame_devided, CNY_kf_bottom, CNY_kf_up)
 
-    return frame_devided, frame_cny
+    return frame_devided, frame_cny, frame_delited, frame_erroded
 
 
 def find_lines(frame_cny):  # берет детектор границ и возвращает сортированный список линий
@@ -197,7 +212,7 @@ def find_mean_direction(vek_list):
     return direction
 
     # else:
-        # return ((0, 0), (0, 0))
+    # return ((0, 0), (0, 0))
     # filtered_dir = (
     #     (
     #         filter(dir_lists[0][0], direction[0][0]),
@@ -227,7 +242,7 @@ def calc_mean_dir(mean_line):
     )
     cos_angle = np.dot(dir, (1, 0)) / norm(dir)
     angle = float((np.arccos(cos_angle) / np.pi * 180 - 90))
-    return angle, (mean_line[1][0], mean_line[0][0])
+    return angle, (mean_line[0][0], mean_line[0][1])
 
 
 def set_camera(cam_No):
@@ -273,7 +288,7 @@ def set_camera(cam_No):
                          'save settings: \'s\'' +
                          'exit: \'q\''
                          )
-            frame_devided, frame_cny = image_processing(raw)
+            frame_devided, frame_cny, frame_delited, frame_erroded = image_processing(raw)
 
             raw = show_screen_data(raw, scrn_data)
             lines = find_lines(frame_cny)
@@ -298,6 +313,8 @@ def set_camera(cam_No):
             cv.imshow('raw', raw)
             # cv.imshow('devided', frame_devided)
             # cv.imshow('cny', frame_cny)
+            cv.imshow('errode', frame_erroded)
+            cv.imshow('delited', frame_delited)
 
             key = cv.waitKey(25) & 0xFF
             if key == ord('q'):

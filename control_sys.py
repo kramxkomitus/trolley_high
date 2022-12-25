@@ -4,6 +4,7 @@ import time
 import machine_vision as MV
 import cv2 as cv
 import HW_interface as HW
+from math import sin, cos, pi
 
 L_vel, R_vel = int(), int()
 max_speed = 600
@@ -54,17 +55,21 @@ def save_pid_settings(name, P, I, D):
 
 
 def filter(val, filter_arr, filter_window=10):
-    filter_arr.append(val)
-    if len(filter_arr) > filter_window:
-        filter_arr.pop(0)
-    if len(filter_arr) > 1:
-        return int(sum(filter_arr) / len(filter_arr))
+    if val != False:
+        filter_arr.append(val)
+        if len(filter_arr) > filter_window:
+            filter_arr.pop(0)
+        if len(filter_arr) >= 1:
+            return int(sum(filter_arr) / len(filter_arr))
     else:
-        return filter_arr[0]
+        return False
 
+def control_signal(angle, point):
+    point[1]
 
 
 def control():
+    HW.send_drives('stop')
 
     cam = cv.VideoCapture(0)
 
@@ -77,7 +82,7 @@ def control():
     t_draw = 0
     
     watch_dog = 0
-    execution_dog = 10
+    execution_dog = 1000
     error_cntr = 0
 
     f_arr_angle = []
@@ -90,12 +95,21 @@ def control():
     pid.output_limits = (-max_speed, max_speed)
 
     # HW.send_drives('start')
+
+    R_str = f"R {160}"
+    L_str = f"L {160}"
+    HW.send_drives(R_str)
+    HW.send_drives(L_str)
+
+
+    cam_settingas = MV.load_settings(0)
+
     while (cam.isOpened()):
         ret, raw = cam.read()
         if ret == True:
             
             #работа с картинкой
-            frame_devided, frame_cny = MV.image_processing(raw)
+            frame_devided, frame_cny, zero, zero = MV.image_processing(raw, cam_settingas)
 
             #определение всех линий (сортированных). Если не определил -> 
             lines = MV.find_lines(frame_cny)
@@ -105,6 +119,7 @@ def control():
                 #если время определения (t_det) было меньше половины кванта времени - if - continue
                 #прибавить значение вочдога
                 watch_dog +=1
+                print('!!!', end='')
                 #вочдог при переполнении выходит из цикла
                 if watch_dog > execution_dog:
                     break
@@ -122,13 +137,18 @@ def control():
                 #загоняем эти значения в фильтр со скользящим окном
                 #ширина окна влияет на скорость определения изменения линии, это важно!
 
-                angle = filter(angle_raw, f_arr_angle)
-                anglepoint = map(filter, point_raw, f_arr_point)
+                dir_angle = filter(angle_raw, f_arr_angle, 5)
+                dir_point = (
+                    filter(point_raw[0], f_arr_point[0], 5),
+                    filter(point_raw[1], f_arr_point[1], 5)
+                )
+
+                # control_signal()
 
                 #сделать функцию, пересчитывающую управляющий сигнал из обеих точек
                 
                 #отправляем управляющий сигнал в пид, получаем значения.
-                delta = pid(angle)
+                delta = pid(dir_angle)
                 left = max_speed
                 right = max_speed
                 if delta < 0:
@@ -138,12 +158,12 @@ def control():
 
                 #дебаг - в консоль
 
-                R_str = f"R {right}"
-                L_str = f"L {left}"
+                R_str = f"R {right + 10}"
+                L_str = f"L {left + 10}"
                 scrn_data = \
                     '\n' * 10 + \
-                    f'angle: {angle} \t\t point: {tuple(anglepoint)}\n' + \
-                    f'delta: {delta:.3f} \t left: {left} \t right: {right}\n' + \
+                    f'angle: {dir_angle} \t\t point: {tuple(dir_point)}\n' + \
+                    f'delta: {delta} \t left: {left} \t right: {right}\n' + \
                     f'detection time: {t_det:.3f} sec \t draw time: {t_draw:.3f} sec\n' + \
                     f'P, I, D: {P, I, D} \t\t\t\t error counter {error_cntr}'
                 print(scrn_data)
@@ -153,16 +173,25 @@ def control():
                 t_remining = time_quantum - (t_pre_draw - t_end)
                 if t_draw < t_remining:
 
-                    # N = ((320, 480), (320 + dir[0], 480 + dir[1]))
+                    X = int(dir_point[0] + 100 * sin(-dir_angle/180*pi))
+                    Y = int(dir_point[1] - 100 * cos(dir_angle/180*pi))
+
+
+                    # dir = ((dir_point[1], dir_point[0]),(Y, X))
+
+                    # dir = ((dir_point[0], dir_point[1]),(X,Y))
+
+                    raw = cv.circle(raw, dir_point, 4, (255, 0, 0), 2)
+
                     L = ((10, 240), (10, int(left / 4)))
                     R = ((630, 240), (630, int(right / 4)))
-                    MV.draw_lines(raw, lines, 255, 0, 255)
+                    MV.draw_lines(raw, lines[:10], 255, 0, 255)
                     MV.draw_lines(raw, [L, R], 0, 200, 100)
-                    # MV.draw_lines(raw, [N], 0, 0, 255)
+                    # MV.draw_lines(raw, [dir], 0, 0, 255)
 
                     raw = MV.show_screen_data(raw, scrn_data)
                     cv.imshow('control', raw)
-                    cv.imshow('detector', frame_devided)
+                    # cv.imshow('detector', frame_devided)
                     t_draw =time.monotonic() - (t_pre_draw)
                 else:
                     t_draw = 0
@@ -209,9 +238,12 @@ def control():
 
     cam.release()
     cv.destroyAllWindows()
-    R_str = f"R {0}"
-    L_str = f"L {0}"
+    R_str = f"R {150}"
+    L_str = f"L {150}"
     HW.send_drives(R_str)
     HW.send_drives(L_str)
+    time.sleep(3)
+    HW.send_drives('stop')
+
 
 control()
