@@ -2,7 +2,7 @@ import HW_interface as HW
 import machine_vision as MV
 import cv2 as cv
 import time
-import evdev
+from evdev import ecodes
 from math import sin, cos, pi
 from simple_pid import PID
 
@@ -110,8 +110,10 @@ def control(Joystick):
 
     while (cam.isOpened()):
         ret, raw = cam.read()
-        if (Joystick != 0 and Joystick.read_once() != False):
-            break
+        ivent = Joystick.read_one()
+        if (Joystick != 0 and ivent != None):
+            if(ivent.type == ecodes.EV_KEY):
+                break
         if ret == True:
             
             #работа с картинкой
