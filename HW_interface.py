@@ -1,22 +1,28 @@
 import serial
+
+string = ''
+
 drives_path = "/dev/ttyUSB0"
 devices_path = "/dev/ttyUSB1"
 
+while "recived" not in string:
+    devices_path, drives_path = drives_path, devices_path  
+    devices = serial.Serial(devices_path, baudrate=115200, timeout=0.1)
+    drives = serial.Serial(drives_path, baudrate=115200, timeout=0.1)
+    devices.write(('whoareyou\n').encode())
+    print('whoareyou')
+    string = devices.readline().decode('utf-8')
+    print(string+'!!!')
 
-
+    
 drives = serial.Serial(drives_path, baudrate=115200, timeout=0.01)
-drives.write(('whoareyou\n').encode())
-string = drives.readline().decode('utf-8')
-if string != "drives":
-    drives_path = "/dev/ttyUSB0"
-    devices_path = "/dev/ttyUSB1"
+devices = serial.Serial(devices_path, baudrate=115200, timeout=0.01)
 
 
 def set_light(val):
-    uart = serial.Serial(devices_path, baudrate=115200)
-    if uart.isOpen() == False:
+    if devices.isOpen() == False:
         print("error open ", devices_path)
-    uart.write(("w " + 3 * (" " + str(val)) + "\n").encode())
+    devices.write(("w " + 3 * (" " + str(val)) + "\n").encode())
 
 def init_drives():
     print("finding drives HW:")
