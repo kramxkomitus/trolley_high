@@ -1,10 +1,10 @@
 import HW_interface as HW
-from simple_pid import PID
-import time
 import machine_vision as MV
 import cv2 as cv
-import HW_interface as HW
+import time
+import evdev
 from math import sin, cos, pi
+from simple_pid import PID
 
 L_vel, R_vel = int(), int()
 max_speed = 1000
@@ -74,7 +74,7 @@ def control_signal(angle, point, koef):
 
 
 
-def control():
+def control(Joystick):
     HW.send_drives('stop')
 
     cam = cv.VideoCapture(0)
@@ -103,18 +103,15 @@ def control():
     pid.output_limits = (-1.5 * max_speed, 1.5 * max_speed)
 
     HW.send_drives('start')
-    time.sleep(1)
-    R_str = f"R {500}"
-    L_str = f"L {500}"
-    HW.send_drives(R_str)
-    time.sleep(0.01)
-    HW.send_drives(L_str)
-
+    HW.send_drives(f"R {500}")
+    HW.send_drives(f"L {500}")
 
     cam_settingas = MV.load_settings(0)
 
     while (cam.isOpened()):
         ret, raw = cam.read()
+        if (Joystick != 0 and Joystick.read_once() != False):
+            break
         if ret == True:
             
             #работа с картинкой
@@ -134,7 +131,6 @@ def control():
                     R_str = f"R {-500}"
                     L_str = f"L {500}"
                     HW.send_drives(R_str)
-                    time.sleep(0.01)
                     HW.send_drives(L_str)
                 if watch_dog > execution_dog:
                     break
@@ -172,9 +168,6 @@ def control():
                     left = left - int(delta)
 
                 #дебаг - в консоль
-
-                R_str = f"R {right + 10}"
-                L_str = f"L {left + 10}"
                 scrn_data = \
                     '\n' * 10 + \
                     f'angle: {dir_angle} \t\t point: {tuple(dir_point)}\n' + \
@@ -203,65 +196,56 @@ def control():
                     raw = MV.show_screen_data(raw, scrn_data)
                     # cv.imshow('control', raw)
                     # cv.imshow('detector', frame_devided)
+
+                    # всякая хуйня с кнопками, тут досчитывается t_draw
+                
+                    key = cv.waitKey(25) & 0xFF
+                    if key == ord('q'):
+                        break
+                    if key == ord('k'):
+                        koef -= 0.01
+                    if key == ord('K'):
+                        koef += 0.01
+                    if key == ord('P'):
+                        P += 1
+                    if key == ord('p'):
+                        P -= 1
+                    if key == ord('I'):
+                        I += 0.1
+                    if key == ord('i'):
+                        I -= 0.1
+                    if key == ord('D'):
+                        D += 1
+                    if key == ord('d'):
+                        D -= 1
+                    if key == ord('s'):
+                        save_pid_settings(P, I, D)
+                    if key == ord('w'):
+                        pid = PID(P, I, D)
+                        pid.setpoint = 0
+                        pid.sample_time = time_quantum
+                        pid.output_limits = (-max_speed, max_speed)
+                    
                     t_draw =time.monotonic() - (t_pre_draw)
                 else:
                     t_draw = 0
-                
                 t_remining = time_quantum - (time.monotonic() - t_end)
 
                 if t_remining < 0:
                     error_cntr += 1
-                    print('\n\n\n time ERROR{error_cntr}')
+                    print(f'\n\n\n time ERROR{error_cntr}')
                     t_remining = 0
                 time.sleep(t_remining)
 
-                HW.send_drives(L_str)
-                time.sleep(0.001)
-                HW.send_drives(R_str)
+                HW.send_drives(f'R {right}')
+                HW.send_drives(f'L {left}')
                 
                 # сохраняем t_end начала итеррации
 
             t_end = time.monotonic()
 
-            # всякая хуйня с кнопками, тут досчитывается t_draw
-            
-            key = cv.waitKey(25) & 0xFF
-            if key == ord('q'):
-                break
-            if key == ord('k'):
-                koef -= 0.01
-            if key == ord('K'):
-                koef += 0.01
-            if key == ord('P'):
-                P += 1
-            if key == ord('p'):
-                P -= 1
-            if key == ord('I'):
-                I += 0.1
-            if key == ord('i'):
-                I -= 0.1
-            if key == ord('D'):
-                D += 1
-            if key == ord('d'):
-                D -= 1
-            if key == ord('s'):
-                save_pid_settings(P, I, D)
-            if key == ord('w'):
-                pid = PID(P, I, D)
-                pid.setpoint = 0
-                pid.sample_time = time_quantum
-                pid.output_limits = (-max_speed, max_speed)
-
     cam.release()
     cv.destroyAllWindows()
-    R_str = f"R {160}"
-    L_str = f"L {160}"
-
-    HW.send_drives(R_str)
-    time.sleep(0.01)
-    HW.send_drives(L_str)
-    time.sleep(3)
+    HW.send_drives(f"R {160}")
+    HW.send_drives(f"L {160}")
     HW.send_drives('stop')
-
-
-control()
