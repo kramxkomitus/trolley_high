@@ -7,7 +7,7 @@ import HW_interface as HW
 from math import sin, cos, pi
 
 L_vel, R_vel = int(), int()
-max_speed = 600
+max_speed = 1000
 
 
 def load_pid_settings(name):
@@ -67,7 +67,9 @@ def filter(val, filter_arr, filter_window=10):
 def control_signal(angle, point, koef):
     centre = (MV.cropp_f[1][1] + MV.cropp_f[1][0]) / 2
     width = (MV.cropp_f[1][1] - MV.cropp_f[1][0]) / 2
-    return angle + koef * width * sin(point[0] - centre)
+    alpha = (point[0] - centre)/ width
+    res = koef * sin(alpha)
+    return angle + res
 
 
 
@@ -81,12 +83,14 @@ def control():
         print("Error opening video file")
         return False
 
-    time_quantum = 0.5
+    time_quantum = 0.2
     t_end = 0    
     t_draw = 0
+
+    koef = -25
     
     watch_dog = 0
-    execution_dog = 1000
+    execution_dog = 500
     error_cntr = 0
 
     f_arr_angle = []
@@ -96,13 +100,14 @@ def control():
     pid = PID(P, I, D)
     pid.setpoint = 0
     pid.sample_time = time_quantum
-    pid.output_limits = (-max_speed, max_speed)
+    pid.output_limits = (-1.5 * max_speed, 1.5 * max_speed)
 
-    # HW.send_drives('start')
-
-    R_str = f"R {160}"
-    L_str = f"L {160}"
+    HW.send_drives('start')
+    time.sleep(1)
+    R_str = f"R {500}"
+    L_str = f"L {500}"
     HW.send_drives(R_str)
+    time.sleep(0.01)
     HW.send_drives(L_str)
 
 
@@ -125,6 +130,12 @@ def control():
                 watch_dog +=1
                 print('!!!', end='')
                 #вочдог при переполнении выходит из цикла
+                if watch_dog > execution_dog/2:
+                    R_str = f"R {-500}"
+                    L_str = f"L {500}"
+                    HW.send_drives(R_str)
+                    time.sleep(0.01)
+                    HW.send_drives(L_str)
                 if watch_dog > execution_dog:
                     break
                 if t_det < 0.5 * time_quantum:
@@ -143,11 +154,11 @@ def control():
 
                 dir_angle = filter(angle_raw, f_arr_angle, 5)
                 dir_point = (
-                    filter(point_raw[0], f_arr_point[0], 5),
-                    filter(point_raw[1], f_arr_point[1], 5)
+                    filter(point_raw[0], f_arr_point[0], 30),
+                    filter(point_raw[1], f_arr_point[1], 30)
                 )
 
-                signal = control_signal(dir_angle, dir_point, 1)
+                signal = control_signal(dir_angle, dir_point, koef)
 
                 #сделать функцию, пересчитывающую управляющий сигнал из обеих точек
                 
@@ -167,9 +178,9 @@ def control():
                 scrn_data = \
                     '\n' * 10 + \
                     f'angle: {dir_angle} \t\t point: {tuple(dir_point)}\n' + \
-                    f'delta: {delta} \t left: {left} \t right: {right}\n' + \
+                    f'delta: {int(delta)} \t left: {left} \t right: {right}\n' + \
                     f'detection time: {t_det:.3f} sec \t draw time: {t_draw:.3f} sec\n' + \
-                    f'P, I, D: {P, I, D} \t\t\t\t error counter {error_cntr}'
+                    f'P, I, D: {P, I, D} koef: {koef}\t\t\t\t error counter {error_cntr}'
                 print(scrn_data)
                 #если хватает времени: (t_draw - предыдущий период отрисовки)
                 #отрисовываем все на экране, если нет - ждем окончания кванта времени - отправляем в движки
@@ -190,7 +201,7 @@ def control():
                     MV.draw_lines(raw, [dir], 0, 0, 255)
 
                     raw = MV.show_screen_data(raw, scrn_data)
-                    cv.imshow('control', raw)
+                    # cv.imshow('control', raw)
                     # cv.imshow('detector', frame_devided)
                     t_draw =time.monotonic() - (t_pre_draw)
                 else:
@@ -201,10 +212,11 @@ def control():
                 if t_remining < 0:
                     error_cntr += 1
                     print('\n\n\n time ERROR{error_cntr}')
-                    sleeping = 0
-                time.sleep(sleeping)
+                    t_remining = 0
+                time.sleep(t_remining)
 
                 HW.send_drives(L_str)
+                time.sleep(0.001)
                 HW.send_drives(R_str)
                 
                 # сохраняем t_end начала итеррации
@@ -216,6 +228,10 @@ def control():
             key = cv.waitKey(25) & 0xFF
             if key == ord('q'):
                 break
+            if key == ord('k'):
+                koef -= 0.01
+            if key == ord('K'):
+                koef += 0.01
             if key == ord('P'):
                 P += 1
             if key == ord('p'):
@@ -238,9 +254,11 @@ def control():
 
     cam.release()
     cv.destroyAllWindows()
-    R_str = f"R {150}"
-    L_str = f"L {150}"
+    R_str = f"R {160}"
+    L_str = f"L {160}"
+
     HW.send_drives(R_str)
+    time.sleep(0.01)
     HW.send_drives(L_str)
     time.sleep(3)
     HW.send_drives('stop')

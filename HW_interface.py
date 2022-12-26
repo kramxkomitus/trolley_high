@@ -2,6 +2,16 @@ import serial
 drives_path = "/dev/ttyUSB0"
 devices_path = "/dev/ttyUSB1"
 
+
+
+drives = serial.Serial(drives_path, baudrate=115200, timeout=0.01)
+drives.write(('whoareyou\n').encode())
+string = drives.readline().decode('utf-8')
+if string != "drives":
+    drives_path = "/dev/ttyUSB0"
+    devices_path = "/dev/ttyUSB1"
+
+
 def set_light(val):
     uart = serial.Serial(devices_path, baudrate=115200)
     if uart.isOpen() == False:
@@ -18,8 +28,7 @@ def init_drives():
     uart.write(('stop\n').encode())
 
 def send_drives(str):
-    uart = serial.Serial(drives_path, baudrate=115200)
-    uart.write((str + '\n').encode())
+    drives.write((str + '\n').encode())
 
 def ask_drives():
     uart = serial.Serial(drives_path, baudrate=115200, timeout=0.01)
@@ -43,7 +52,3 @@ class uart:
                     return
             except:
                 continue
-
-
-
-# dr = uart("drives")
