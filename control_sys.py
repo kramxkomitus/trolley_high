@@ -64,8 +64,12 @@ def filter(val, filter_arr, filter_window=10):
     else:
         return False
 
-def control_signal(angle, point):
-    point[1]
+def control_signal(angle, point, koef):
+    centre = (MV.cropp_f[1][1] + MV.cropp_f[1][0]) / 2
+    width = (MV.cropp_f[1][1] - MV.cropp_f[1][0]) / 2
+    return angle + koef * width * sin(point[0] - centre)
+
+
 
 
 def control():
@@ -143,12 +147,12 @@ def control():
                     filter(point_raw[1], f_arr_point[1], 5)
                 )
 
-                # control_signal()
+                signal = control_signal(dir_angle, dir_point, 1)
 
                 #сделать функцию, пересчитывающую управляющий сигнал из обеих точек
                 
                 #отправляем управляющий сигнал в пид, получаем значения.
-                delta = pid(dir_angle)
+                delta = pid(signal)
                 left = max_speed
                 right = max_speed
                 if delta < 0:
@@ -176,18 +180,14 @@ def control():
                     X = int(dir_point[0] + 100 * sin(-dir_angle/180*pi))
                     Y = int(dir_point[1] - 100 * cos(dir_angle/180*pi))
 
+                    dir = ((dir_point[0], dir_point[1]),(X,Y))
 
-                    # dir = ((dir_point[1], dir_point[0]),(Y, X))
-
-                    # dir = ((dir_point[0], dir_point[1]),(X,Y))
-
-                    raw = cv.circle(raw, dir_point, 4, (255, 0, 0), 2)
 
                     L = ((10, 240), (10, int(left / 4)))
                     R = ((630, 240), (630, int(right / 4)))
                     MV.draw_lines(raw, lines[:10], 255, 0, 255)
                     MV.draw_lines(raw, [L, R], 0, 200, 100)
-                    # MV.draw_lines(raw, [dir], 0, 0, 255)
+                    MV.draw_lines(raw, [dir], 0, 0, 255)
 
                     raw = MV.show_screen_data(raw, scrn_data)
                     cv.imshow('control', raw)
