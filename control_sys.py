@@ -5,15 +5,14 @@ import time
 from evdev import ecodes
 from math import sin, cos, pi
 from simple_pid import PID
+import os
 
 L_vel, R_vel = int(), int()
-max_speed = 1000
-
 
 def load_pid_settings(name):
 
     import json
-    file_name = "PID_settings_" + str(name) + ".json"
+    file_name = "/home/mark/workspace/trolley_high/PID_settings_" + str(name) + ".json"
     loaded = {
         'P': -1,
         'I': -1,
@@ -77,20 +76,22 @@ def control_signal(angle, point, koef):
 def control(Joystick):
     HW.send_drives('stop')
 
-    cam = cv.VideoCapture(0)
+    os.environ['OPENCV_VIDEOIO_PRIORITY_MSMF'] = '0'
+
+    cam = cv.VideoCapture(cv.CAP_V4L2)
 
     if (cam.isOpened() == False):
         print("Error opening video file")
         return False
 
-    time_quantum = 0.2
+    time_quantum = 0.08
     t_end = 0    
     t_draw = 0
 
     koef = -25
     
     watch_dog = 0
-    execution_dog = 500
+    execution_dog = 6000
     error_cntr = 0
 
     f_arr_angle = []
@@ -100,7 +101,7 @@ def control(Joystick):
     pid = PID(P, I, D)
     pid.setpoint = 0
     pid.sample_time = time_quantum
-    pid.output_limits = (-1.5 * max_speed, 1.5 * max_speed)
+    pid.output_limits = (-0.8 * HW.max_speed, 0.8 * HW.max_speed)
 
     HW.send_drives('start')
     HW.send_drives(f"R {500}")
@@ -128,12 +129,15 @@ def control(Joystick):
                 #прибавить значение вочдога
                 watch_dog +=1
                 print('!!!', end='')
+                if watch_dog == 60:
+                    HW.send_drives(f"R {200}")
+                    HW.send_drives(f"L {200}")
                 #вочдог при переполнении выходит из цикла
-                if watch_dog > execution_dog/2:
-                    R_str = f"R {-500}"
-                    L_str = f"L {500}"
-                    HW.send_drives(R_str)
-                    HW.send_drives(L_str)
+                if watch_dog > 300:
+                    HW.send_drives(f"R {-600}")
+                    HW.send_drives(f"L {600}")
+                    time.sleep(0.1)
+                    print("rotate")
                 if watch_dog > execution_dog:
                     break
                 if t_det < 0.5 * time_quantum:
@@ -162,8 +166,8 @@ def control(Joystick):
                 
                 #отправляем управляющий сигнал в пид, получаем значения.
                 delta = pid(signal)
-                left = max_speed
-                right = max_speed
+                left = HW.max_speed
+                right = HW.max_speed
                 if delta < 0:
                     right = right + int(delta)
                 else:
@@ -196,8 +200,7 @@ def control(Joystick):
                     MV.draw_lines(raw, [dir], 0, 0, 255)
 
                     raw = MV.show_screen_data(raw, scrn_data)
-                    # cv.imshow('control', raw)
-                    # cv.imshow('detector', frame_devided)
+                    cv.imshow('control', raw)
 
                     # всякая хуйня с кнопками, тут досчитывается t_draw
                 
@@ -226,7 +229,7 @@ def control(Joystick):
                         pid = PID(P, I, D)
                         pid.setpoint = 0
                         pid.sample_time = time_quantum
-                        pid.output_limits = (-max_speed, max_speed)
+                        pid.output_limits = (-HW.max_speed, HW.max_speed)
                     
                     t_draw =time.monotonic() - (t_pre_draw)
                 else:
@@ -251,3 +254,4 @@ def control(Joystick):
     HW.send_drives(f"R {160}")
     HW.send_drives(f"L {160}")
     HW.send_drives('stop')
+

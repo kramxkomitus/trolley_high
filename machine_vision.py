@@ -21,7 +21,8 @@ cam_settings = {
     'dilate_kernel': 1,
     'minLineLength': 10,
     'maxLineGap': 5,
-    'light': 100
+    'light': 100,
+    'trhld_const': 0
 }
 
 dir_lists = (((list()), (list())), ((list()), (list())))
@@ -60,19 +61,10 @@ def load_settings(cam_No):
     import json
     import copy
 
-    file_name = "cam_" + str(cam_No) + "_settings.json"
+    file_name = "/home/mark/workspace/trolley_high/cam_" + str(cam_No) + "_settings.json"
 
-    loaded = {  # КОСТЫЛЬ
-        'blur_kf': 3,  # КОСТЫЛЬ
-        'CNY_kf_bottom': 125,  # КОСТЫЛЬ
-        'CNY_kf_up': 175,  # КОСТЫЛЬ
-        'threshold': 2,  # КОСТЫЛЬ
-        'erode_kernel': 1,
-        'dilate_kernel': 1,
-        'minLineLength': 10,  # КОСТЫЛЬ
-        'maxLineGap': 5,  # КОСТЫЛЬ
-        'light': 100  # КОСТЫЛЬ
-    }  # КОСТЫЛЬ
+    loaded = cam_settings
+
     try:  # КОСТЫЛЬ
         file = open(file_name, 'r', encoding='utf8')  # КОСТЫЛЬ
         loaded = json.load(file).copy()  # КОСТЫЛЬ
@@ -85,6 +77,7 @@ def load_settings(cam_No):
         cam_settings['threshold'] = loaded['threshold']  # КОСТЫЛЬ
         cam_settings['minLineLength'] = loaded['minLineLength']  # КОСТЫЛЬ
         cam_settings['maxLineGap'] = loaded['maxLineGap']  # КОСТЫЛЬ
+        cam_settings['trhld_const'] = loaded['trhld_const']  # КОСТЫЛЬ
         cam_settings['light'] = loaded['light']  # КОСТЫЛЬ
 
     except FileNotFoundError:
@@ -95,7 +88,7 @@ def load_settings(cam_No):
         file.close()
     print("settings are loaded:")
     print(json.dumps(cam_settings, indent=4, sort_keys=True))
-    HW.set_light(cam_settings['light'])
+    HW.set_light(cam_settings['light'], cam_settings['light'], cam_settings['light'])
     return cam_settings
 
 
@@ -122,19 +115,24 @@ def image_processing(raw, cam_settings):  # цель - получить усто
     blur_kf = cam_settings['blur_kf']
     CNY_kf_up = cam_settings['CNY_kf_up']
     CNY_kf_bottom = cam_settings['CNY_kf_bottom']
-    HW.set_light(cam_settings['light'])
+    HW.set_light(cam_settings['light'], cam_settings['light'], cam_settings['light'])
     erode_kernel = cam_settings['erode_kernel']
     dilate_kernel = cam_settings['dilate_kernel']
     erode_kernel = np.ones(erode_kernel, np.uint8)
     dilate_kernel = np.ones(dilate_kernel, np.uint8)
-
+    trhld_const = cam_settings['trhld_const']
+    
     raw_gray_sc = cv.cvtColor(raw, cv.COLOR_BGR2GRAY)
     frame_cropped = raw_gray_sc[cropp_f[0][0]
         : cropp_f[0][1], cropp_f[1][0]: cropp_f[1][1]]
     frame_blured = cv.GaussianBlur(
         frame_cropped, (blur_kf, blur_kf), cv.BORDER_DEFAULT)
-    ret3, frame_devided = cv.threshold(
-        frame_blured, 0, 255, cv.THRESH_BINARY+cv.THRESH_OTSU)
+
+
+    ret3, frame_devided = cv.threshold(frame_blured, trhld_const, 255, cv.THRESH_BINARY)
+    # ret3, frame_devided = cv.adaptiveThreshold(frame_blured, 150, 255, cv.THRESH_BINARY+cv.THRESH_OTSU)
+    # frame_devided = cv.adaptiveThreshold(frame_blured,255,cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 11, trhld_const)
+    
     frame_delited = cv.dilate(frame_devided, dilate_kernel)
     frame_erroded = cv.erode(frame_delited, erode_kernel)
     frame_cny = cv.Canny(frame_devided, CNY_kf_bottom, CNY_kf_up)
@@ -146,10 +144,10 @@ def find_lines(frame_cny):  # берет детектор границ и воз
     # сначала ближайшие к нижней границе кадра. Каждая линия - кортеж из
     # двух точек (кортежей), первая точка - ближайшая к нижней границе кадра
 
-    threshold = cam_settings['threshold']
+    lines_threshold = cam_settings['threshold']
     minLineLength = cam_settings['minLineLength']
     maxLineGap = cam_settings['maxLineGap']
-    lines = cv.HoughLinesP(frame_cny, 1, np.pi / 180, threshold=threshold,
+    lines = cv.HoughLinesP(frame_cny, 1, np.pi / 180, threshold=lines_threshold,
                            minLineLength=minLineLength, maxLineGap=maxLineGap)
     vek_list = []
     if lines is not None:
@@ -211,28 +209,6 @@ def find_mean_direction(vek_list):
         )
     return direction
 
-    # else:
-    # return ((0, 0), (0, 0))
-    # filtered_dir = (
-    #     (
-    #         filter(dir_lists[0][0], direction[0][0]),
-    #         filter(dir_lists[0][1], direction[0][1]),
-    #     ),
-    #     (
-    #         filter(dir_lists[1][0], direction[1][0]),
-    #         filter(dir_lists[1][1], direction[1][1]),
-    #     ))
-    # filtered_dir = (
-    #     (
-    #         0,
-    #         0
-    #     ),
-    #     (
-    #         filtered_dir[1][0] - filtered_dir[0][0],
-    #         filtered_dir[1][1] - filtered_dir[0][1]
-    #     ))
-    # return filtered_dir
-
 
 def calc_mean_dir(mean_line):
     from numpy.linalg import norm
@@ -261,8 +237,7 @@ def set_camera(cam_No):
     CNY_kf_up = cam_settings['CNY_kf_up']
     CNY_kf_bottom = cam_settings['CNY_kf_bottom']
     light = cam_settings['light']
-
-    HW.set_light(light)
+    trhld_const = cam_settings['trhld_const']
 
     import time
     tim = time.monotonic()
@@ -277,10 +252,11 @@ def set_camera(cam_No):
                          'blur_kf = ' + str(blur_kf) + ' | W/w\n' +
                          'CNY_kf_up =' + str(CNY_kf_up) + ' | R/r\n' +
                          'CNY_kf_bottom =' + str(CNY_kf_bottom) + ' | E/e\n' +
+                         'adaptive treshold constant: '+ str(trhld_const)+ ' | A/a\n'
                          '\n' +
                          'Line detection settings: \n' +
                          '\n' +
-                         'threshold = ' + str(threshold) + ' | T/t\n' +
+                         'lines threshold = ' + str(threshold) + ' | T/t\n' +
                          'minLineLength =' + str(minLineLength) + ' | F/f\n' +
                          'maxLineGap =' + str(maxLineGap) + ' | G/g\n' +
                          '\n' +
@@ -288,31 +264,27 @@ def set_camera(cam_No):
                          'save settings: \'s\'' +
                          'exit: \'q\''
                          )
-            frame_devided, frame_cny, frame_delited, frame_erroded = image_processing(raw)
+            frame_devided, frame_cny, frame_delited, frame_erroded = image_processing(raw, cam_settings)
 
             raw = show_screen_data(raw, scrn_data)
             lines = find_lines(frame_cny)
-            draw_lines(raw, lines)
+            if lines != False:
+                draw_lines(raw, lines)
+                dir = find_mean_direction(lines)
+                N = ((320 + dir[0][0], 240 + dir[0][1]),
+                     (320 + dir[1][0], 240 + dir[1][1]))
+                draw_lines(raw, [N], 255, 0, 255)
 
-            dir = find_mean_direction(lines)
-            N = ((320 + dir[0][0], 240 + dir[0][1]),
-                 (320 + dir[1][0], 240 + dir[1][1]))
-            draw_lines(raw, [N], 255, 0, 255)
-
-            # angle = np.arccos(cos_angle) / np.pi * 180 - 90
-            # scrn_data += ('\n angle = ' + str(angle))
             cur_time = time.monotonic()
             period = cur_time - tim
             tim = cur_time
             scrn_data += ('\n time = ' + str(period))
 
-            draw_lines(raw, [dir], 255, 0, 255)
-
             raw = show_screen_data(raw, scrn_data)
 
             cv.imshow('raw', raw)
-            # cv.imshow('devided', frame_devided)
-            # cv.imshow('cny', frame_cny)
+            cv.imshow('devided', frame_devided)
+            cv.imshow('cny', frame_cny)
             cv.imshow('errode', frame_erroded)
             cv.imshow('delited', frame_delited)
 
@@ -357,12 +329,17 @@ def set_camera(cam_No):
                 light -= 2
                 HW.set_light(light)
 
+            if key == ord('A'):
+                trhld_const += 1
+            if key == ord('a'):
+                trhld_const -= 1
+
             # if key == ord('a'):
                 # save_frame(output, i)
                 # i += 1
-            if key == ord('A'):
-                save_frame(raw, i)
-                i += 1
+            # if key == ord('A'):
+                # save_frame(raw, i)
+                # i += 1
 
             if key == ord('s'):
                 cam_settings['blur_kf'] = blur_kf
@@ -372,32 +349,11 @@ def set_camera(cam_No):
                 cam_settings['minLineLength'] = minLineLength
                 cam_settings['maxLineGap'] = maxLineGap
                 cam_settings['light'] = light
+                cam_settings['trhld_const'] = trhld_const
                 save_settings(cam_No)
 
     cam.release()
     cv.destroyAllWindows()
 
-
-# def get_direction():
-# 	cam = cv.VideoCapture(0)
-# 	if (cam.isOpened()== False):
-# 		print("Error opening video file")
-# 		return False
-# 	load_settings(0)
-# 	while(cam.isOpened()):
-# 		ret, raw = cam.read()
-# 		if ret == True:
-# 			frame_devided, frame_cny = image_processing(raw)
-# 			lines = find_lines(frame_cny)
-# 			draw_lines(raw, lines)
-# 			dir = calc_direction(lines)
-# 			dir_vek = (
-# 				dir[1][0] - dir[0][0],
-# 				dir[1][1] - dir[1][0]
-# 			)
-# 			from numpy.linalg import norm
-# 			cos_angle = np.dot(dir_vek, (1, 0)) / norm(dir)
-# 			return np.arccos(cos_angle) / np.pi * 180 - 90
-# 	cam.release(0)
 
 # set_camera(0)

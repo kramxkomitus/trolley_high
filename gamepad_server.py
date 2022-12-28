@@ -20,10 +20,11 @@ def find_gamepad():
             print("find controller", device.path, device.name, device.phys)
             return device
         else:
-            print("error")
+            print("gamepad error")
             return False
 
 HW.send_drives('stop')
+HW.set_light(255, 0, 0)
 left_dir = 1
 right_dir = 1
 left_abs = 0
@@ -42,10 +43,12 @@ if Joystik != False:
                 if event.code == 304 and not event.value:
                     print("\n\t\t start \n")
                     HW.send_drives("start")
+                    HW.set_light(0, 0, 255)
                 # B button
                 if event.code == 305 and not event.value:
                     print("\n\t\t stop \n")
                     HW.send_drives("stop")
+                    HW.set_light(255, 0, 0)
                 # Left bump
                 if event.code == 310:
                     if event.value:
@@ -67,16 +70,16 @@ if Joystik != False:
             elif event.type == ecodes.EV_ABS:
                 # left trigger
                 if event.code == 10:
-                    left_abs = event.value
+                    left_abs = int(event.value * (HW.max_speed/1024))
                 # right trigger
                 elif event.code == 9:
-                    right_abs = event.value
+                    right_abs = int(event.value * (HW.max_speed/1024))
 
                 left = left_abs * left_dir
                 right = right_abs * right_dir
                 responde = HW.ask_drives()
                 if responde != False:
                     feedback = responde
-                HW.send_drives("L " + str(left))
-                HW.send_drives("R " + str(right))
+                HW.send_drives("L " + str(left+10))
+                HW.send_drives("R " + str(right+10))
                 print("L ", left, "\t\t\tR ", right, "\t\t\t\t\tFeedback: ", feedback[:-1])

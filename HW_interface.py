@@ -1,11 +1,12 @@
 import serial
 
 string = ''
+max_speed = 700
 
 drives_path = "/dev/ttyUSB0"
 devices_path = "/dev/ttyUSB1"
 
-while "recived" not in string:
+while "devices" not in string:
     devices_path, drives_path = drives_path, devices_path  
     devices = serial.Serial(devices_path, baudrate=115200, timeout=0.1)
     drives = serial.Serial(drives_path, baudrate=115200, timeout=0.1)
@@ -14,15 +15,13 @@ while "recived" not in string:
     string = devices.readline().decode('utf-8')
     print(string+'!!!')
 
-    
 drives = serial.Serial(drives_path, baudrate=115200, timeout=0.01)
 devices = serial.Serial(devices_path, baudrate=115200, timeout=0.01)
 
-
-def set_light(val):
+def set_light(B, G, R):
     if devices.isOpen() == False:
         print("error open ", devices_path)
-    devices.write(("w " + 3 * (" " + str(val)) + "\n").encode())
+    devices.write((f"l {R} {G} {B}\n").encode())
 
 def init_drives():
     print("finding drives HW:")
@@ -38,10 +37,11 @@ def send_drives(str):
 
 def ask_drives():
     uart = serial.Serial(drives_path, baudrate=115200, timeout=0.01)
-    string = uart.readline().decode('utf-8')
-    if string != '':
+    try:
+        string = uart.readline().decode('utf-8')
+        string != ''
         return string
-    else:
+    except:
         return False
 
 
